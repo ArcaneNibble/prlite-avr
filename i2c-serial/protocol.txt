@@ -1,0 +1,19 @@
+all comms is in hex
+upper case recommended, lower case should work but not tested
+
+coming from module to pc, module has address FE
+data is reported raw in hex
+
+from pc to module:
+
++--------------------------------+---------------------------+-------------------------------------+---------------------------+
+| 1 byte	num bytes to recieve | nnnn bytes	data to send | optional .	should recieve a byte? | space ' '	end of request |
++--------------------------------+---------------------------+-------------------------------------+---------------------------+
+
+presence of '.' indicates that a response will be requested
+reciving 0 bytes will crash (or probably recieve 256)
+
+example:
+'1002040004AAAA. '
+| 10 | 02040004AAAA | . |   |
+receive 16 bytes, send 02040004AAAA, do ask for reply, begin

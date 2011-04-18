@@ -1,0 +1,5 @@
+extended = 0xFF
+high = 0xD9
+low = 0xF7
+
+isp frequency needs to be reduced to 125k
