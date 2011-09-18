@@ -14,7 +14,7 @@ export SILENT = @
 
 export TOPDIR = $(CURDIR)
 
-export CFLAGS += -gdwarf-2 -Wall -Os -mmcu=$(DEVICE) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -std=gnu99 -DSVNREVISON="\"$(shell svnversion)\""
+export CFLAGS += -gdwarf-2 -Wall -Os -mmcu=$(DEVICE) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -std=gnu99
 export ASFLAGS += -gdwarf-2 -Wall -mmcu=$(DEVICE)
 export LDFLAGS += -gdwarf-2 -Wall -mmcu=$(DEVICE)
 
@@ -50,6 +50,7 @@ endef
 # $(eval $(call build-program,name,deps))
 # this tries to auto search for all the needed source files
 define build-program
+$1/$1.elf : LDFLAGS += -Wl,-Map=$(BINDIR)/$1.map
 $(BINDIR):	$(BINDIR)/$1.hex
 $(BINDIR)/$1.hex:	$1/$1.hex
 	$$(SILENT)[ -d $$(WHERE) ] || mkdir -p $$(WHERE)

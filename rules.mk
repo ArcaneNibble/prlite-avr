@@ -28,6 +28,7 @@ WHERE = $(dir $@)
 %.elf:
 	@echo $(notdir $@)
 	$(SILENT)[ -d $(WHERE) ] || mkdir -p $(WHERE)
+	$(SILENT)[ -d $(BINDIR) ] || mkdir -p $(BINDIR)
 	$(SILENT)$(LD) $(LDFLAGS) -o $@ $+ $(EXTRA_LIBS)
 
 %.o:	%.c
