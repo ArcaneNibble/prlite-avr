@@ -119,7 +119,6 @@ ISR(TIMER0_OVF_vect)
 	{
 		cnt = 0;
 		timer0_off();
-		//timer2_on();	//re-tx
 		shouldtx = 1;
 	}
 }
@@ -130,7 +129,6 @@ ISR(TIMER2_COMPA_vect)
 	//should hopefully be one packet only
 	if(bufaddr == 5 && buf[1] == 0xFE && buf[2] == 0xC0)
 	{
-	//	DDRC = 0;
 		b = buf[0] + buf[1] + buf[2] + buf[3] + buf[4];
 		if(b == 0)
 		{
@@ -141,18 +139,6 @@ ISR(TIMER2_COMPA_vect)
 			b_data.address = buf[3];
 			
 			boot_from_nothing_break = 1;
-			
-			
-			//magic
-			
-			/*cli();
-	
-			tx_on();
-
-			while(1)
-			{
-				UDR0 = buf[3];
-			}*/
 		}
 	}
 	bufaddr = 0;
@@ -162,10 +148,7 @@ ISR(TIMER2_OVF_vect)
 {
 	unsigned char c;
 	//more than 300uS, we can transmit?
-	//timer2_off();
-	//timer2_half_off();
 	
-	//just transmit, will happen every 300 uS
 	if(shouldtx)
 	{
 		timer0_on();	//retry every second
@@ -228,8 +211,6 @@ ISR(TIMER2_OVF_vect)
 		
 		shouldtx = 0;
 	}
-	//timer2_half_on();
-	//timer2_on();
 }
 
 void flash_info_ee(void)
@@ -256,12 +237,6 @@ void reset(void)
 
 void boot_from_nothing(void)
 {
-/*	tx_on();
-
-	while(1)
-	{
-		UDR0 = 0x56;
-	}*/
 	timer2_on();
 	timer2_half_on();
 	sei();
