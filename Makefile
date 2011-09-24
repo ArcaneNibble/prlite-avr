@@ -51,11 +51,15 @@ endef
 # this tries to auto search for all the needed source files
 define build-program
 $1/$1.elf : LDFLAGS += -Wl,-Map=$(BINDIR)/$1.map
-$(BINDIR):	$(BINDIR)/$1.hex
+$(BINDIR):	$(BINDIR)/$1.hex $(BINDIR)/$1.lst
 $(BINDIR)/$1.hex:	$1/$1.hex
 	$$(SILENT)[ -d $$(WHERE) ] || mkdir -p $$(WHERE)
 	$$(SILENT)cp $$< $$@
+$(BINDIR)/$1.lst:	$1/$1.lst
+	$$(SILENT)[ -d $$(WHERE) ] || mkdir -p $$(WHERE)
+	$$(SILENT)cp $$< $$@
 $1/$1.elf:	$$(subst .asm,.o,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.asm))) $$(subst .c,.o,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.c))) $$(subst .S,.o,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.S))) $$(subst .s,.o,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.s)))
+$1/$1.lst:	$1/$1.elf
 $1/$1.elf:	$2
 -include $$(subst .asm,.P,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.asm))) $$(subst .c,.P,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.c))) $$(subst .S,.P,$$(subst $$(TOPDIR)/,,$$(wildcard $$(TOPDIR)/$1/*.S)))
 endef
@@ -107,6 +111,15 @@ $(BINDIR):	$(LIBSDIR) $(INCLUDESDIR)
 $(eval $(call build-program,pid-wheel,))
 $(eval $(call build-program,linact,))
 $(eval $(call build-program,i2c-serial,))
+$(eval $(call build-program,485net-bootloader,))
+
+#hack
+485net-bootloader/485net-bootloader.elf:
+	@echo $(notdir $@)
+	@echo NOTE: bootloader
+	$(SILENT)[ -d $(WHERE) ] || mkdir -p $(WHERE)
+	$(SILENT)[ -d $(BINDIR) ] || mkdir -p $(BINDIR)
+	$(SILENT)$(LD) $(LDFLAGS) -Wl,-T$(TOPDIR)/485net-bootloader/avr5.x -o $@ $+ $(EXTRA_LIBS)
 
 include $(TOPDIR)/rules.mk
 

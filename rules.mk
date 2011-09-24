@@ -5,6 +5,7 @@ AS = avr-as
 AR = avr-ar
 LD = avr-gcc
 OBJCOPY = avr-objcopy
+OBJDUMP = avr-objdump
 SED = sed
 
 SOURCES		+= $(TOPDIR)/$(WHERE)
@@ -24,6 +25,11 @@ WHERE = $(dir $@)
 	@echo $(notdir $@)
 	$(SILENT)[ -d $(WHERE) ] || mkdir -p $(WHERE)
 	$(SILENT)$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
+
+%.lst:	%.elf
+	@echo $(notdir $@)
+	$(SILENT)[ -d $(WHERE) ] || mkdir -p $(WHERE)
+	$(SILENT)avr-objdump -h -S $< > $@
 
 %.elf:
 	@echo $(notdir $@)
