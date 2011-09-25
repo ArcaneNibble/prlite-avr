@@ -12,6 +12,8 @@ ifneq ($(BUILD),$(notdir $(CURDIR)))
 #export SILENT = 
 export SILENT = @
 
+export EXTRA_LIBS = -lm
+
 export TOPDIR = $(CURDIR)
 
 export CFLAGS += -gdwarf-2 -Wall -Os -mmcu=$(DEVICE) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -std=gnu99

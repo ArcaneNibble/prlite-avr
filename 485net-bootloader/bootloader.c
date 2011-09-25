@@ -1,9 +1,13 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
+#include <avr/pgmspace.h>
 #include <avr/boot.h>
+#include <avr/wdt.h>
 
-#define BOOT_EE_START	((void*)(0x3F0))
+#define BOOT_EE_START		((void*)(0x3F0))
+#define LIBRARY_START_BYTE	((void*)(0x6000))
+#define LIBRARY_END_BYTE	((void*)(0x77FF))
 
 typedef struct
 {
@@ -14,7 +18,7 @@ typedef struct
 	unsigned char checksum;
 } __attribute__((__packed__)) bootdata;
 
-int adler_a, adler_b;
+unsigned long adler_a, adler_b;
 
 volatile unsigned char buf[300];
 volatile unsigned char bufaddr = 0;
@@ -24,10 +28,27 @@ volatile unsigned char boot_from_nothing_break = 0;
 
 volatile bootdata b_data;
 
-void adler_init(void)
+#define MOD_ADLER 65521
+
+inline void adler_init(void)
 {
 	adler_a = 1;
 	adler_b = 0;
+}
+
+void adler_add_byte(unsigned char b)
+{
+	//adler_a = (adler_a + b) % MOD_ADLER;
+	adler_a = (adler_a + b);
+	while(adler_a > MOD_ADLER) adler_a -= MOD_ADLER;
+	//adler_b = (adler_b + adler_a) % MOD_ADLER;
+	adler_b = (adler_b + adler_a);
+	while(adler_b > MOD_ADLER) adler_b -= MOD_ADLER;
+}
+
+inline unsigned long adler_get_result(void)
+{
+	return (adler_b << 16) | adler_a;
 }
 
 inline void rx_on(void)
@@ -230,7 +251,8 @@ void flash_info_ee(void)
 
 void reset(void)
 {
-	WDTCSR = _BV(WDE);
+	//WDTCSR = _BV(WDE);
+	wdt_enable(WDTO_15MS);
 	while(1)
 		;
 }
@@ -248,14 +270,22 @@ void boot_from_nothing(void)
 	reset();
 }
 
+inline unsigned long compute_library_checksum(void)
+{
+}
+
 int main(void)
 {
 	int i;
 	unsigned char a;
+	unsigned int w;
 	unsigned char *b_data_bytes;
+	PGM_VOID_P library;
 	
+	wdt_reset();
 	MCUSR = 0;
-	WDTCSR = 0;		//watchdog off
+	//WDTCSR = 0;		//watchdog off
+	wdt_disable();
 	
 	MCUCR = _BV(IVCE);
 	MCUCR = _BV(IVSEL);
@@ -287,6 +317,23 @@ int main(void)
 		a += b_data_bytes[i];
 	if(a != b_data.checksum)
 		boot_from_nothing();
+	
+	adler_init();
+	for(library = LIBRARY_START_BYTE; library <= LIBRARY_END_BYTE; library+=2)
+	{
+		w = pgm_read_word(library);
+		adler_add_byte(w & 0xFF);
+		adler_add_byte((w >> 8) & 0xFF);
+	}
+	if(adler_get_result() != b_data.library_adler)
+	{
+		tx_on();
+
+		while(1)
+		{
+			UDR0 = 0x56;
+		}
+	}
 	
 	tx_on();
 
