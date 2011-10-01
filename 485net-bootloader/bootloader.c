@@ -6,8 +6,11 @@
 #include <avr/wdt.h>
 
 #define BOOT_EE_START		((void*)(0x3F0))
+#define BL_BLOCK_SIZE		32		//dictated by packet
+#define BL_BLK_PER_FL_BLK	(SPM_PAGESIZE / BL_BLOCK_SIZE)
 #define LIBRARY_START_BYTE	((void*)(0x6000))
 #define LIBRARY_END_BYTE	((void*)(0x77FF))
+#define LIBRARY_BLOCKS		((LIBRARY_END_BYTE-LIBRARY_START_BYTE+1) / BL_BLOCK_SIZE)
 
 typedef struct
 {
@@ -22,9 +25,15 @@ unsigned long adler_a, adler_b;
 
 volatile unsigned char buf[300];
 volatile unsigned char bufaddr = 0;
-volatile unsigned char wantrx = 0;
-volatile unsigned char shouldtx = 1;
-volatile unsigned char boot_from_nothing_break = 0;
+volatile unsigned char wantrx;
+volatile unsigned char shouldtx;
+volatile unsigned char boot_break;
+
+// 0	- address
+// 1	- library
+volatile unsigned char booting_mode;
+volatile unsigned char booting_block;
+volatile unsigned char output_csum;
 
 volatile bootdata b_data;
 
@@ -147,22 +156,62 @@ ISR(TIMER0_OVF_vect)
 ISR(TIMER2_COMPA_vect)
 {
 	unsigned char b = 0;
+	unsigned char i;
 	//should hopefully be one packet only
-	if(bufaddr == 5 && buf[1] == 0xFE && buf[2] == 0xC0)
+	if(booting_mode == 0)
 	{
-		b = buf[0] + buf[1] + buf[2] + buf[3] + buf[4];
-		if(b == 0)
+		if(bufaddr == 5 && buf[1] == 0xFE && buf[2] == 0xC0)
 		{
-			wantrx = 0;
-			timer2_off();
-			timer0_off();
-			
-			b_data.address = buf[3];
-			
-			boot_from_nothing_break = 1;
+			b = buf[0] + buf[1] + buf[2] + buf[3] + buf[4];
+			if(b == 0)
+			{
+				wantrx = 0;
+				timer2_off();
+				timer0_off();
+				
+				b_data.address = buf[3];
+				
+				boot_break = 1;
+			}
 		}
 	}
+	else if(booting_mode == 1)
+	{
+		if(bufaddr == (5 + BL_BLOCK_SIZE) && buf[1] == b_data.address && buf[2] == 0xC1 && buf[3] == booting_block)
+		{
+			b = 0;
+			for(i = 0; i < bufaddr; i++)
+				b += buf[i];
+			if(b == 0)
+			{
+				wantrx = 0;
+				timer2_off();
+				timer0_off();
+				
+				boot_break = 1;
+			}
+		}
+	}
+	
 	bufaddr = 0;
+}
+
+unsigned char tx_with_checking(unsigned char x)
+{
+	unsigned char c;
+
+	UDR0 = x;
+	while(!(UCSR0A & _BV(UDRE0)));
+	while(!(UCSR0A & _BV(RXC0)));
+	c = UDR0;
+	if(c != x)
+	{
+		uart_rx_int_on();
+		tx_off();
+		timer2_on();
+		return 0;
+	}
+	return 1;
 }
 
 ISR(TIMER2_OVF_vect)
@@ -174,61 +223,54 @@ ISR(TIMER2_OVF_vect)
 	{
 		timer0_on();	//retry every second
 	
-		tx_on();
-		uart_rx_int_off();
+		if(booting_mode == 0)
+		{
+			tx_on();
+			uart_rx_int_off();
 
-		while(UCSR0A & _BV(RXC0))
-		{
-			c = UDR0;
+			while(UCSR0A & _BV(RXC0))
+			{
+				c = UDR0;
+			}
+			
+			if(!tx_with_checking(0xFE))
+				return;
+			if(!tx_with_checking(0x00))
+				return;
+			if(!tx_with_checking(0xC0))
+				return;
+			if(!tx_with_checking(0x42))
+				return;
+			
+			uart_rx_int_on();
+			tx_off();
+			wantrx = 1;
 		}
+		else if(booting_mode == 1)
+		{
+			tx_on();
+			uart_rx_int_off();
 
-		UDR0 = 0xFE;
-		while(!(UCSR0A & _BV(UDRE0)));
-		while(!(UCSR0A & _BV(RXC0)));
-		c = UDR0;
-		if(c != 0xFE)
-		{
+			while(UCSR0A & _BV(RXC0))
+			{
+				c = UDR0;
+			}
+			
+			if(!tx_with_checking(b_data.address))
+				return;
+			if(!tx_with_checking(0x00))
+				return;
+			if(!tx_with_checking(0xC1))
+				return;
+			if(!tx_with_checking(booting_block))
+				return;
+			if(!tx_with_checking(output_csum))
+				return;
+			
 			uart_rx_int_on();
 			tx_off();
-			timer2_on();
+			wantrx = 1;
 		}
-		
-		UDR0 = 0x00;
-		while(!(UCSR0A & _BV(UDRE0)));
-		while(!(UCSR0A & _BV(RXC0)));
-		c = UDR0;
-		if(c != 0x00)
-		{
-			uart_rx_int_on();
-			tx_off();
-			timer2_on();
-		}
-		
-		UDR0 = 0xC0;
-		while(!(UCSR0A & _BV(UDRE0)));
-		while(!(UCSR0A & _BV(RXC0)));
-		c = UDR0;
-		if(c != 0xC0)
-		{
-			uart_rx_int_on();
-			tx_off();
-			timer2_on();
-		}
-		
-		UDR0 = 0x42;
-		while(!(UCSR0A & _BV(UDRE0)));
-		while(!(UCSR0A & _BV(RXC0)));
-		c = UDR0;
-		if(c != 0x42)
-		{
-			uart_rx_int_on();
-			tx_off();
-			timer2_on();
-		}
-		
-		uart_rx_int_on();
-		tx_off();
-		wantrx = 1;
 		
 		shouldtx = 0;
 	}
@@ -259,19 +301,100 @@ void reset(void)
 
 void boot_from_nothing(void)
 {
+	wantrx = 0;
+	boot_break = 0;
+
+	booting_mode = 0;
+
+	shouldtx = 1;
 	timer2_on();
 	timer2_half_on();
 	sei();
 	
-	while(!boot_from_nothing_break)
+	while(!boot_break)
 		;
 	
 	flash_info_ee();
 	reset();
 }
 
-inline unsigned long compute_library_checksum(void)
+//inclusive [start,end] not [start,end)
+void erase_region(void *start, void *end)
 {
+	void *addr;
+	
+	for(addr = start; addr <= end; addr += SPM_PAGESIZE)
+	{
+		boot_page_erase_safe(addr);
+	}
+}
+
+void boot_load_library(void)
+{
+	void *addr;
+	unsigned int w;
+	unsigned char i, a;
+
+	erase_region(LIBRARY_START_BYTE, LIBRARY_END_BYTE);
+	
+	booting_mode = 1;
+	booting_block = 0;
+	
+	addr = LIBRARY_START_BYTE;
+
+	while(booting_block < LIBRARY_BLOCKS)
+	{
+		output_csum = ~(b_data.address + 0x00 + 0xC1 + booting_block) + 1;
+	
+		wantrx = 0;
+		boot_break = 0;
+	
+		shouldtx = 1;
+		timer2_on();
+		timer2_half_on();
+		sei();
+		
+		while(!boot_break)
+			;
+		
+		cli();
+	
+	/*tx_on();
+
+	while(1)
+	{
+		UDR0 = 0x57;
+	}*/
+		
+		for(i = 0; i < BL_BLOCK_SIZE; i += 2)
+		{
+			w = buf[4 + i] | (buf[4 + i + 1] << 8);
+			boot_page_fill_safe(addr, w);
+			addr += 2;
+		}
+		
+		//flash_info_ee();
+		booting_block++;
+		
+		if((booting_block % BL_BLK_PER_FL_BLK) == 0)
+		{
+			//hopefully correct
+			boot_page_write_safe(addr - SPM_PAGESIZE);
+		}
+	}
+	
+	adler_init();
+	for(addr = LIBRARY_START_BYTE; addr <= LIBRARY_END_BYTE; /*library+=2*/ addr++)
+	{
+		a = pgm_read_byte(addr);
+		adler_add_byte(a);
+	}
+	b_data.library_adler = adler_get_result();
+	
+	flash_info_ee();
+	
+	reset();
+	//while(1);
 }
 
 int main(void)
@@ -283,7 +406,7 @@ int main(void)
 	PGM_VOID_P library;
 	
 	wdt_reset();
-	MCUSR = 0;
+	MCUSR &= ~(_BV(WDRF));
 	//WDTCSR = 0;		//watchdog off
 	wdt_disable();
 	
@@ -319,20 +442,17 @@ int main(void)
 		boot_from_nothing();
 	
 	adler_init();
-	for(library = LIBRARY_START_BYTE; library <= LIBRARY_END_BYTE; library+=2)
+	for(library = LIBRARY_START_BYTE; library <= LIBRARY_END_BYTE; /*library+=2*/ library++)
 	{
-		w = pgm_read_word(library);
-		adler_add_byte(w & 0xFF);
-		adler_add_byte((w >> 8) & 0xFF);
+		//w = pgm_read_word(library);
+		//adler_add_byte(w & 0xFF);
+		//adler_add_byte((w >> 8) & 0xFF);
+		a = pgm_read_byte(library);
+		adler_add_byte(a);
 	}
 	if(adler_get_result() != b_data.library_adler)
 	{
-		tx_on();
-
-		while(1)
-		{
-			UDR0 = 0x56;
-		}
+		boot_load_library();
 	}
 	
 	tx_on();
