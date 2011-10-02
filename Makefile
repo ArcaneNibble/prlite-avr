@@ -115,6 +115,9 @@ $(eval $(call build-program,linact,))
 $(eval $(call build-program,i2c-serial,))
 $(eval $(call build-program,485net-bootloader,))
 
+485net-bootloader/485net-bootloader.elf : LDFLAGS += -Wl,--undefined=_jumptable
+485net-bootloader/485net-bootloader.hex : OBJCOPYFLAGS += -j .jumps
+
 #hack
 485net-bootloader/485net-bootloader.elf:
 	@echo $(notdir $@)

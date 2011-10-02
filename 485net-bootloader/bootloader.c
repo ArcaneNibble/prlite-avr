@@ -9,8 +9,9 @@
 #define BL_BLOCK_SIZE		32		//dictated by packet
 #define BL_BLK_PER_FL_BLK	(SPM_PAGESIZE / BL_BLOCK_SIZE)
 #define LIBRARY_START_BYTE	((void*)(0x6000))
-#define LIBRARY_END_BYTE	((void*)(0x77FF))
+#define LIBRARY_END_BYTE	((void*)(0x6FFF))
 #define LIBRARY_BLOCKS		((LIBRARY_END_BYTE-LIBRARY_START_BYTE+1) / BL_BLOCK_SIZE)
+#define APP_BLOCKS			((int)LIBRARY_START_BYTE / BL_BLOCK_SIZE)
 
 typedef struct
 {
@@ -31,8 +32,9 @@ volatile unsigned char boot_break;
 
 // 0	- address
 // 1	- library
+// 2	- application
 volatile unsigned char booting_mode;
-volatile unsigned char booting_block;
+volatile unsigned int booting_block;
 volatile unsigned char output_csum;
 
 volatile bootdata b_data;
@@ -45,7 +47,7 @@ inline void adler_init(void)
 	adler_b = 0;
 }
 
-void adler_add_byte(unsigned char b)
+inline void adler_add_byte(unsigned char b)
 {
 	//adler_a = (adler_a + b) % MOD_ADLER;
 	adler_a = (adler_a + b);
@@ -60,22 +62,22 @@ inline unsigned long adler_get_result(void)
 	return (adler_b << 16) | adler_a;
 }
 
-inline void rx_on(void)
+void rx_on(void)
 {
 	PORTC &= ~_BV(PC1);
 }
 
-inline void rx_off(void)
+void rx_off(void)
 {
 	PORTC |= _BV(PC1);
 }
 
-inline void tx_on(void)
+void tx_on(void)
 {
 	PORTC |= _BV(PC0);
 }
 
-inline void tx_off(void)
+void tx_off(void)
 {
 	PORTC &= ~_BV(PC0);
 }
@@ -157,8 +159,12 @@ ISR(TIMER2_COMPA_vect)
 {
 	unsigned char b = 0;
 	unsigned char i;
+	unsigned char booting_mode_copy;
+	
+	booting_mode_copy = booting_mode;
+	
 	//should hopefully be one packet only
-	if(booting_mode == 0)
+	if(booting_mode_copy == 0)
 	{
 		if(bufaddr == 5 && buf[1] == 0xFE && buf[2] == 0xC0)
 		{
@@ -175,9 +181,26 @@ ISR(TIMER2_COMPA_vect)
 			}
 		}
 	}
-	else if(booting_mode == 1)
+	else if(booting_mode_copy == 1)
 	{
-		if(bufaddr == (5 + BL_BLOCK_SIZE) && buf[1] == b_data.address && buf[2] == 0xC1 && buf[3] == booting_block)
+		if(bufaddr == (5 + BL_BLOCK_SIZE) && buf[1] == b_data.address && buf[2] == 0xC1 && buf[3] == (booting_block & 0xFF))
+		{
+			b = 0;
+			for(i = 0; i < bufaddr; i++)
+				b += buf[i];
+			if(b == 0)
+			{
+				wantrx = 0;
+				timer2_off();
+				timer0_off();
+				
+				boot_break = 1;
+			}
+		}
+	}
+	else if(booting_mode_copy == 2)
+	{
+		if(bufaddr == (6 + BL_BLOCK_SIZE) && buf[1] == b_data.address && buf[2] == 0xC2 && buf[3] == (booting_block & 0xFF) && buf[4] == ((booting_block >> 8) & 0xFF))
 		{
 			b = 0;
 			for(i = 0; i < bufaddr; i++)
@@ -217,13 +240,17 @@ unsigned char tx_with_checking(unsigned char x)
 ISR(TIMER2_OVF_vect)
 {
 	unsigned char c;
+	unsigned char booting_mode_copy;
+	
+	booting_mode_copy = booting_mode;
+	
 	//more than 300uS, we can transmit?
 	
 	if(shouldtx)
 	{
 		timer0_on();	//retry every second
 	
-		if(booting_mode == 0)
+		if(booting_mode_copy == 0)
 		{
 			tx_on();
 			uart_rx_int_off();
@@ -246,7 +273,7 @@ ISR(TIMER2_OVF_vect)
 			tx_off();
 			wantrx = 1;
 		}
-		else if(booting_mode == 1)
+		else if(booting_mode_copy == 1)
 		{
 			tx_on();
 			uart_rx_int_off();
@@ -271,6 +298,33 @@ ISR(TIMER2_OVF_vect)
 			tx_off();
 			wantrx = 1;
 		}
+		else if(booting_mode_copy == 2)
+		{
+			tx_on();
+			uart_rx_int_off();
+
+			while(UCSR0A & _BV(RXC0))
+			{
+				c = UDR0;
+			}
+			
+			if(!tx_with_checking(b_data.address))
+				return;
+			if(!tx_with_checking(0x00))
+				return;
+			if(!tx_with_checking(0xC2))
+				return;
+			if(!tx_with_checking(booting_block & 0xFF))
+				return;
+			if(!tx_with_checking((booting_block >> 8) & 0xFF))
+				return;
+			if(!tx_with_checking(output_csum))
+				return;
+			
+			uart_rx_int_on();
+			tx_off();
+			wantrx = 1;
+		}
 		
 		shouldtx = 0;
 	}
@@ -278,11 +332,11 @@ ISR(TIMER2_OVF_vect)
 
 void flash_info_ee(void)
 {
-	int i;
+	unsigned char i;
 	unsigned char a;
 	unsigned char *b_data_bytes;
 	
-	b_data_bytes = &b_data;
+	b_data_bytes = (unsigned char *)(&b_data);
 	a = 0;
 	for(i=0;i<sizeof(b_data)-1;i++)
 		a += b_data_bytes[i];
@@ -297,6 +351,18 @@ void reset(void)
 	wdt_enable(WDTO_15MS);
 	while(1)
 		;
+}
+
+//inclusive
+void compute_adler(void *addr, void *end_addr)
+{
+	unsigned char a;
+	adler_init();
+	for(; addr <= end_addr; addr++)
+	{
+		a = pgm_read_byte(addr);
+		adler_add_byte(a);
+	}
 }
 
 void boot_from_nothing(void)
@@ -329,22 +395,19 @@ void erase_region(void *start, void *end)
 	}
 }
 
-void boot_load_library(void)
+void boot_common(void *addr, unsigned char cmdbyte, unsigned int blocks, unsigned char hack)
 {
-	void *addr;
+	unsigned char i;
 	unsigned int w;
-	unsigned char i, a;
-
-	erase_region(LIBRARY_START_BYTE, LIBRARY_END_BYTE);
-	
-	booting_mode = 1;
-	booting_block = 0;
-	
-	addr = LIBRARY_START_BYTE;
-
-	while(booting_block < LIBRARY_BLOCKS)
+	while(booting_block < blocks)
 	{
-		output_csum = ~(b_data.address + 0x00 + 0xC1 + booting_block) + 1;
+		if(!hack)
+			output_csum = ~(b_data.address + 0x00 + cmdbyte + booting_block) + 1;
+		else
+		{
+			//booting app
+			output_csum = ~(b_data.address + 0x00 + cmdbyte + (booting_block & 0xFF) + ((booting_block >> 8) & 0xFF)) + 1;
+		}
 	
 		wantrx = 0;
 		boot_break = 0;
@@ -358,22 +421,14 @@ void boot_load_library(void)
 			;
 		
 		cli();
-	
-	/*tx_on();
-
-	while(1)
-	{
-		UDR0 = 0x57;
-	}*/
 		
 		for(i = 0; i < BL_BLOCK_SIZE; i += 2)
 		{
-			w = buf[4 + i] | (buf[4 + i + 1] << 8);
+			w = buf[4 + i + hack] | (buf[4 + i + hack + 1] << 8);
 			boot_page_fill_safe(addr, w);
 			addr += 2;
 		}
 		
-		//flash_info_ee();
 		booting_block++;
 		
 		if((booting_block % BL_BLK_PER_FL_BLK) == 0)
@@ -383,37 +438,49 @@ void boot_load_library(void)
 		}
 	}
 	
-	adler_init();
-	for(addr = LIBRARY_START_BYTE; addr <= LIBRARY_END_BYTE; /*library+=2*/ addr++)
-	{
-		a = pgm_read_byte(addr);
-		adler_add_byte(a);
-	}
+	boot_rww_enable_safe();
+}
+
+void boot_load_library(void)
+{
+	erase_region(LIBRARY_START_BYTE, LIBRARY_END_BYTE);
+	
+	booting_mode = 1;
+	booting_block = 0;
+	
+	boot_common(LIBRARY_START_BYTE, 0xC1, LIBRARY_BLOCKS, 0);
+	
+	compute_adler(LIBRARY_START_BYTE, LIBRARY_END_BYTE);
 	b_data.library_adler = adler_get_result();
 	
 	flash_info_ee();
 	
 	reset();
-	//while(1);
 }
 
-int main(void)
+void boot_load_app(void)
 {
-	int i;
-	unsigned char a;
-	unsigned int w;
-	unsigned char *b_data_bytes;
-	PGM_VOID_P library;
+	erase_region(0, LIBRARY_START_BYTE-1);
 	
-	wdt_reset();
-	MCUSR &= ~(_BV(WDRF));
-	//WDTCSR = 0;		//watchdog off
-	wdt_disable();
+	booting_mode = 2;
+	booting_block = 0;
+
+	boot_common(0, 0xC2, APP_BLOCKS, 1);
 	
+	compute_adler(0, LIBRARY_START_BYTE - 1);
+	b_data.application_adler = adler_get_result();
+	
+	flash_info_ee();
+	
+	reset();
+}
+
+void bootloader_hw_enable(void)
+{
 	MCUCR = _BV(IVCE);
 	MCUCR = _BV(IVSEL);
 	
-	
+	///
 
 	UBRR0 = 1;				//1 mbaud
 	UCSR0A = _BV(U2X0);		//double speed
@@ -432,33 +499,54 @@ int main(void)
 	DDRC = _BV(PC0) | _BV(PC1);		//output on txe/rxe
 	//PORTC = _BV(PC0);	//on tx and rx
 	rx_on();
+}
+
+int main(void)
+{
+	unsigned char i;
+	unsigned char a;
+	unsigned char *b_data_bytes;
+	void (*zero)(void) = 0;
+	
+	wdt_reset();
+	MCUSR &= ~(_BV(WDRF));
+	//WDTCSR = 0;		//watchdog off
+	wdt_disable();
+	
+	//////////////////////////////////////////////////////
 	
 	eeprom_read_block(&b_data, BOOT_EE_START, sizeof(b_data));
-	b_data_bytes = &b_data;
+	b_data_bytes = (unsigned char *)&b_data;
 	a = 0;
 	for(i=0;i<sizeof(b_data)-1;i++)
 		a += b_data_bytes[i];
 	if(a != b_data.checksum)
-		boot_from_nothing();
-	
-	adler_init();
-	for(library = LIBRARY_START_BYTE; library <= LIBRARY_END_BYTE; /*library+=2*/ library++)
 	{
-		//w = pgm_read_word(library);
-		//adler_add_byte(w & 0xFF);
-		//adler_add_byte((w >> 8) & 0xFF);
-		a = pgm_read_byte(library);
-		adler_add_byte(a);
+		bootloader_hw_enable();
+		boot_from_nothing();
 	}
+	
+	//////////////////////////////////////////////////////
+	
+	compute_adler(LIBRARY_START_BYTE, LIBRARY_END_BYTE);
 	if(adler_get_result() != b_data.library_adler)
 	{
+		bootloader_hw_enable();
 		boot_load_library();
 	}
 	
-	tx_on();
-
-	while(1)
+	///////////////////////////////////////////////////////
+	
+	compute_adler(0, LIBRARY_START_BYTE - 1);
+	if(adler_get_result() != b_data.application_adler)
 	{
-		UDR0 = 0x55;
+		bootloader_hw_enable();
+		boot_load_app();
 	}
+	
+	//goodbye!
+	
+	//just in case
+	boot_rww_enable_safe();
+	zero();
 }

@@ -3,7 +3,8 @@ OUTPUT_FORMAT("elf32-avr","elf32-avr","elf32-avr")
 OUTPUT_ARCH(avr:5)
 MEMORY
 {
-  text      (rx)   : ORIGIN = 0x7800, LENGTH = 2048
+  text      (rx)   : ORIGIN = 0x7000, LENGTH = 4080
+  jumps		(rx)   : ORIGIN = 0x7FF0, LENGTH = 16
   data      (rw!x) : ORIGIN = 0x800060, LENGTH = 0xffa0
   eeprom    (rw!x) : ORIGIN = 0x810000, LENGTH = 64K
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = 1K
@@ -35,6 +36,8 @@ SECTIONS
     }
   .rel.fini      : { *(.rel.fini)		}
   .rela.fini     : { *(.rela.fini)	}
+  .rel.jumps     : { *(.rel.jumps)		}
+  .rela.jumps    : { *(.rela.jumps)	}
   .rel.rodata    :
     {
       *(.rel.rodata)
@@ -146,7 +149,11 @@ SECTIONS
     KEEP (*(.fini0))
      _etext = . ;
   }  > text
-  .data	  : AT (ADDR (.text) + SIZEOF (.text))
+  .jumps  :
+  {
+    *(.jumps)
+  }  > jumps
+  .data	  : AT (ADDR (.text) + SIZEOF (.text) + SIZEOF (.jumps))
   {
      PROVIDE (__data_start = .) ;
     *(.data)
