@@ -114,9 +114,13 @@ $(eval $(call build-program,pid-wheel,))
 $(eval $(call build-program,linact,))
 $(eval $(call build-program,i2c-serial,))
 $(eval $(call build-program,485net-bootloader,))
+$(eval $(call build-program,lib485net,))
 
 485net-bootloader/485net-bootloader.elf : LDFLAGS += -Wl,--undefined=_jumptable
 485net-bootloader/485net-bootloader.hex : OBJCOPYFLAGS += -j .jumps
+
+#section-start is because avr-gcc is weird
+lib485net/lib485net.elf : LDFLAGS += -nostartfiles -Wl,--section-start,.data=0x800500
 
 #hack
 485net-bootloader/485net-bootloader.elf:
@@ -125,6 +129,13 @@ $(eval $(call build-program,485net-bootloader,))
 	$(SILENT)[ -d $(WHERE) ] || mkdir -p $(WHERE)
 	$(SILENT)[ -d $(BINDIR) ] || mkdir -p $(BINDIR)
 	$(SILENT)$(LD) $(LDFLAGS) -Wl,-T$(TOPDIR)/485net-bootloader/avr5.x -o $@ $+ $(EXTRA_LIBS)
+
+lib485net/lib485net.elf:
+	@echo $(notdir $@)
+	@echo NOTE: library
+	$(SILENT)[ -d $(WHERE) ] || mkdir -p $(WHERE)
+	$(SILENT)[ -d $(BINDIR) ] || mkdir -p $(BINDIR)
+	$(SILENT)$(LD) $(LDFLAGS) -Wl,-T$(TOPDIR)/lib485net/avr5.x -o $@ $+ $(EXTRA_LIBS)
 
 include $(TOPDIR)/rules.mk
 
