@@ -62,6 +62,11 @@ inline unsigned long adler_get_result(void)
 	return (adler_b << 16) | adler_a;
 }
 
+void txrx_enable(void)
+{
+	DDRC |= _BV(PC0) | _BV(PC1);		//output on txe/rxe
+}
+
 void rx_on(void)
 {
 	PORTC &= ~_BV(PC1);
@@ -496,7 +501,7 @@ void bootloader_hw_enable(void)
 	TCCR0B = 0;		//don't enable yet
 	TIMSK0 = _BV(TOIE0);	//enable overflow interrupt
 
-	DDRC = _BV(PC0) | _BV(PC1);		//output on txe/rxe
+	txrx_enable();
 	//PORTC = _BV(PC0);	//on tx and rx
 	rx_on();
 }

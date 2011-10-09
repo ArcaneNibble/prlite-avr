@@ -6,3 +6,4 @@ _jumptable:
 	rjmp tx_off
 	rjmp rx_on
 	rjmp rx_off
+	rjmp txrx_enable
