@@ -20,5 +20,6 @@ _jumptable:
 	rjmp peekPackets
 	rjmp doChecksum
 	rjmp connectDGram
+	rjmp closeDGram
 	rjmp sendDGram
 	rjmp recvDGram

@@ -5,8 +5,11 @@
 #define DATAGRAM_PROTOCOL		0x00
 #define DATAGRAM_PROTOCOL_MASK	0xC0
 
+extern unsigned char open_dgram_ports[];
+
 extern void *connectDGram(unsigned char addr, unsigned char localport, unsigned char remoteport);
 extern unsigned char sendDGram(void *conn, const unsigned char *packet, unsigned char len);
 extern unsigned char recvDGram(void *conn, unsigned char *packet, unsigned char *len);
+extern void closeDGram(void *conn);
 
 #endif
