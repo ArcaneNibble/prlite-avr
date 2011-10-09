@@ -15,3 +15,6 @@ _jumptable:
 	rjmp t2_150
 	rjmp t2_300
 	rjmp setAddr
+	rjmp sendRaw
+	rjmp recvRaw
+	rjmp peekPackets
