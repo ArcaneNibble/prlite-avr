@@ -1,5 +1,6 @@
 #include <avr/interrupt.h>
 #include <string.h>
+#include "packetRaw.h"
 #include "common.h"
 #include "queue.h"
 
