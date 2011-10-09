@@ -34,7 +34,7 @@ unsigned char recvRaw(unsigned char *packet, unsigned char *len)
 {
 	unsigned char slot, i, len_;
 
-	if(packet == NULL || len == 0)
+	if(packet == NULL || len == NULL)
 		return 1;
 	
 	cli();
