@@ -9,7 +9,7 @@ unsigned char open_dgram_ports[8];
 
 void *connectDGram(unsigned char addr, unsigned char localport, unsigned char remoteport)
 {
-	if(localport == 0 || localport > 8 || remoteport == 0 || remoteport > 8) return NULL;
+	if(localport > 7 || remoteport > 7) return NULL;
 	open_dgram_ports[localport] = 1;
 	return (void*)(addr | (localport << 8) | (remoteport << 11) | (1 << 14));
 	//it isn't really a connection
