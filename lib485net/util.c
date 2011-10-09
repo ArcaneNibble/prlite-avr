@@ -46,3 +46,15 @@ void setAddr(unsigned char a)
 {
 	my_addr = a;
 }
+
+unsigned char doChecksum(const unsigned char *buf, unsigned char len)
+{
+	unsigned char sum, i;
+	
+	sum = 0;
+	
+	for(i = 0; i < len; i++)
+		sum += buf[i];
+	
+	return (unsigned char)(0x100 - ((unsigned int)(sum)));
+}

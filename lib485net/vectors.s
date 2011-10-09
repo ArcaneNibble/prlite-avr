@@ -18,3 +18,4 @@ _jumptable:
 	rjmp sendRaw
 	rjmp recvRaw
 	rjmp peekPackets
+	rjmp doChecksum

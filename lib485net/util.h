@@ -15,6 +15,8 @@ extern void initLib(void);
 //0 = recieve anybody
 extern void setAddr(unsigned char a);
 
+extern unsigned char doChecksum(const unsigned char *buf, unsigned char len);
+
 //actually 37.5
 #define TICKS_300US		38
 //actually 18.75
