@@ -85,7 +85,7 @@ extern unsigned char recvDGram(void *conn_, unsigned char *packet, unsigned char
 	if(rx_queue_next != 0)
 	{
 		//slot = rx_queue[0];
-		for(i = 0; i < rx_queue_next-1; i++)
+		for(i = 0; i < rx_queue_next; i++)
 		{
 			if(((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 2] & DATAGRAM_PROTOCOL_MASK) == DATAGRAM_PROTOCOL)
 				&& ((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 2] & 7) == ((conn >> 8) & 7)))	//vomit	//what it actually does is check proto and port
