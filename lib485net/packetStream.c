@@ -46,7 +46,7 @@ extern void *connectStream(unsigned char addr, unsigned char localport, unsigned
 	buf_tmp[1] = addr;
 	buf_tmp[2] = (localport << 3) | remoteport | STREAM_PROTOCOL;
 	//payload now
-	buf_tmp[3] = 'S';
+	buf_tmp[3] = STREAM_TYPE_OPEN_CONN;
 	buf_tmp[4] = buf_tmp[5] = 0;
 	buf_tmp[6] = doChecksum(buf_tmp, 6);
 	
@@ -100,7 +100,7 @@ extern unsigned char sendStream(void *conn, const unsigned char *packet, unsigne
 	packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;			//source address
 	packet_queue[slot * MAX_PACKET_SIZE + 1] = d->remote_addr;	//dest address
 	packet_queue[slot * MAX_PACKET_SIZE + 2] = STREAM_PROTOCOL | d->ports;
-	packet_queue[slot * MAX_PACKET_SIZE + 3] = 'P';	//payload
+	packet_queue[slot * MAX_PACKET_SIZE + 3] = STREAM_TYPE_PAYLOAD;	//payload
 	packet_queue[slot * MAX_PACKET_SIZE + 4] = d->tx_seq & 0xFF;
 	packet_queue[slot * MAX_PACKET_SIZE + 5] = (d->tx_seq >> 8) & 0xFF;
 	memcpy(&(packet_queue[slot * MAX_PACKET_SIZE + 6]), packet, len);
@@ -159,7 +159,7 @@ extern void closeStream(void *conn)
 	buf_tmp[1] = d->remote_addr;
 	buf_tmp[2] = d->ports | STREAM_PROTOCOL;
 	//payload now
-	buf_tmp[3] = 'F';
+	buf_tmp[3] = STREAM_TYPE_CLOSE_CONN;
 	buf_tmp[4] = buf_tmp[5] = 0;
 	buf_tmp[6] = doChecksum(buf_tmp, 6);
 	

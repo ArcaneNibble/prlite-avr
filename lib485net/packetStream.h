@@ -5,6 +5,16 @@
 #define STREAM_PROTOCOL			0x40
 #define STREAM_PROTOCOL_MASK	0xC0
 
+#define STREAM_TYPE_OPEN_CONN	'S'
+#define STREAM_TYPE_CLOSE_CONN	'F'
+#define STREAM_TYPE_PAYLOAD		'P'
+#define STREAM_TYPE_ACK			'A'
+#define STREAM_TYPE_NACK		'N'
+
+#define NACK_CHECKSUM		'C'
+#define NACK_NOTLISTENING	'L'
+#define NACK_WRONGSEQ		'S'
+
 typedef struct
 {
 	//0 = unused/closed
