@@ -105,7 +105,7 @@ void t2_300(void)
 		//something to send
 		current_tx_queue_slot = tx_queue[0];
 		tx_packet_bytes = 0;
-		tx_packet_bytes_max = packet_queue_status[current_tx_queue_slot];
+		tx_packet_bytes_max = packet_queue_status[current_tx_queue_slot & 0x7F];
 		
 		//disable rx interrupt and enable tx interrupt
 		UCSR0B = (UCSR0B & ~(_BV(RXCIE0))) | _BV(UDRIE0);
@@ -116,7 +116,7 @@ void t2_300(void)
 void uart_tx_isr(void)
 {
 	unsigned char c, i;
-	c = packet_queue[current_tx_queue_slot * MAX_PACKET_SIZE + tx_packet_bytes++];
+	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes++];
 	UDR0 = c;
 	
 	//there should not be any bytes before our own packet
@@ -143,7 +143,8 @@ void uart_tx_isr(void)
 	if(tx_packet_bytes == tx_packet_bytes_max)
 	{
 		//we're done!
-		queue_free(current_tx_queue_slot);
+		if(!(current_tx_queue_slot & 0x80))
+			queue_free(current_tx_queue_slot & 0x7F);
 		//should be safe even if more stuff has been enqueued (we are atomic here)
 		for(i = 0; i < tx_queue_next-1; i++)
 			tx_queue[i] = tx_queue[i+1];

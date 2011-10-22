@@ -11,6 +11,7 @@ extern unsigned char packet_queue[];
 //size of packets (0 = unallocated)
 extern unsigned char packet_queue_status[];
 //index into queue
+//tx queue: bit7 = do not free queue buffer
 extern unsigned char tx_queue[];
 extern unsigned char rx_queue[];
 extern unsigned char tx_queue_next;
