@@ -16,6 +16,7 @@ _jumptable:
 
 	rjmp t2_150
 	rjmp t2_300
+	rjmp idle_isr
 
 	rjmp setAddr
 
@@ -25,10 +26,11 @@ _jumptable:
 
 	rjmp doChecksum
 
+	rjmp listenDGram
 	rjmp connectDGram
-	rjmp closeDGram
 	rjmp sendDGram
 	rjmp recvDGram
+	rjmp closeDGram
 
 	rjmp listenStream
 	rjmp connectStream
