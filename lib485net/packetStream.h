@@ -14,6 +14,10 @@
 #define NACK_CHECKSUM		'C'
 #define NACK_NOTLISTENING	'L'
 #define NACK_WRONGSEQ		'S'
+#define NACK_ALREADYOPEN	'O'
+
+#define ACK_STANDARD		'A'
+#define ACK_OPEN_CONN		'C'
 
 typedef struct
 {
