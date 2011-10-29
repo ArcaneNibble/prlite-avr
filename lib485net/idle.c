@@ -97,7 +97,7 @@ void idle_isr(void)
 					for(j = 0; j < MAX_CONNECTIONS; j++)
 					{
 						if((conn_states[j].mode != 0) && (((conn_states[j].ports >> 3) & 7) == port) &&
-							((conn_states[j].ports & 7) == remoteport) &&(conn_states[j].remote_addr == remote))
+							((conn_states[j].ports & 7) == remoteport) && (conn_states[j].remote_addr == remote))
 						{
 							//we are already connected
 							
@@ -206,7 +206,7 @@ void idle_isr(void)
 					for(j = 0; j < MAX_CONNECTIONS; j++)
 					{
 						if((conn_states[j].mode == 2 || conn_states[j].mode == 3) && (((conn_states[j].ports >> 3) & 7) == port) &&
-							((conn_states[j].ports & 7) == remoteport) &&(conn_states[j].remote_addr == remote))
+							((conn_states[j].ports & 7) == remoteport) && (conn_states[j].remote_addr == remote))
 						{
 							if((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 4] != (conn_states[j].rx_seq & 0xFF)) || 
 								(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 5] != ((conn_states[j].rx_seq >> 8) & 0xFF)))
@@ -336,10 +336,45 @@ void idle_isr(void)
 					for(j = 0; j < MAX_CONNECTIONS; j++)
 					{
 						if(conn_states[j].mode != 0 && (((conn_states[j].ports >> 3) & 7) == port) &&
-							((conn_states[j].ports & 7) == remoteport) &&(conn_states[j].remote_addr == remote))
+							((conn_states[j].ports & 7) == remoteport) && (conn_states[j].remote_addr == remote))
 						{
 							//close the connection
 							conn_states[j].mode = 0;
+						}
+					}
+					
+					//dequeue the packet (no matter if we matched anything)
+					
+					queue_free(rx_queue[i]);
+					
+					for(j = i; j < rx_queue_next-1; j++)
+					{
+						rx_queue[j] = rx_queue[j+1];
+					}
+					rx_queue_next--;
+				}
+				
+				if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 3] == STREAM_TYPE_ACK)
+				{
+					for(j = 0; j < MAX_CONNECTIONS; j++)
+					{
+						if(((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == ACK_STANDARD && conn_states[j].mode == 3) ||
+							(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == ACK_OPEN_CONN && conn_states[j].mode == 1)) &&
+								(((conn_states[j].ports >> 3) & 7) == port) &&
+							((conn_states[j].ports & 7) == remoteport) && (conn_states[j].remote_addr == remote))
+						{
+							//matched connection that is waiting for an ack
+							
+							if((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 4] == (conn_states[j].rx_seq & 0xFF)) &&
+								(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 5] == ((conn_states[j].rx_seq >> 8) & 0xFF)))
+							{
+								//and the sequence number is correct
+								//note that an opening connection expects a seq of 0 and the seq will be 0 so we don't have to skip this check
+								
+								//then we can clear the wait for ack
+								conn_states[j].mode = 2;
+								conn_states[j].noack_time = 0;
+							}
 						}
 					}
 					
