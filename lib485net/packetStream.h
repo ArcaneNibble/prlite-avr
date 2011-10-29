@@ -11,13 +11,18 @@
 #define STREAM_TYPE_ACK			'A'
 #define STREAM_TYPE_NACK		'N'
 
-#define NACK_CHECKSUM		'C'
+//#define NACK_CHECKSUM		'C'
 #define NACK_NOTLISTENING	'L'
 #define NACK_WRONGSEQ		'S'
 #define NACK_ALREADYOPEN	'O'
+#define NACK_NOTCONNECTED	'N'
+#define NACK_BUSY			'B'
 
 #define ACK_STANDARD		'A'
 #define ACK_OPEN_CONN		'C'
+
+#define TIMEOUT		10
+//20 ms
 
 typedef struct
 {
@@ -26,6 +31,7 @@ typedef struct
 	//2 = open
 	//3 = waiting ack
 	//4 = listening
+	//100 = hard error
 	unsigned char mode;
 	unsigned char remote_addr;
 	unsigned int tx_seq;

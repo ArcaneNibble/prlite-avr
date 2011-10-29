@@ -11,7 +11,7 @@ connData conn_states[MAX_CONNECTIONS];
 extern void *listenStream(unsigned char localport)
 {
 	unsigned char i;
-	connData *d;
+	connData *d = NULL;
 	
 	if(localport > 7) return NULL;
 	
@@ -39,7 +39,7 @@ extern void *listenStream(unsigned char localport)
 extern void *connectStream(unsigned char addr, unsigned char localport, unsigned char remoteport)
 {
 	unsigned char i;
-	connData *d;
+	connData *d = NULL;
 	unsigned char buf_tmp[7];
 	
 	buf_tmp[0] = my_addr;
@@ -84,7 +84,7 @@ extern unsigned char sendStream(void *conn, const unsigned char *packet, unsigne
 	if(conn == NULL || packet == NULL || len == 0 || len > STREAM_MAX_SIZE)
 		return 1;
 	d = (connData*)(conn);
-	if(d->mode == 0)
+	if(d->mode == 0 || d->mode == 100)
 		return 1;
 	if(d->mode != 2)
 		return 0xff;
@@ -125,7 +125,7 @@ extern unsigned char recvStream(void *conn, unsigned char *packet, unsigned char
 	if(conn == NULL || packet == NULL || len == NULL)
 		return 1;
 	d = (connData*)(conn);
-	if(d->mode == 0)
+	if(d->mode == 0 || d->mode == 100)
 		return 1;
 	if(d->mode != 2)
 		return 0xff;
