@@ -118,6 +118,15 @@ void idle_isr(void)
 								tx_queue[tx_queue_next++] = slot;
 							}
 							
+							//now we want to reset the connection
+							conn_states[j].mode = 2;
+							conn_states[j].tx_seq = 0;
+							conn_states[j].rx_seq = 0;
+							conn_states[j].tx_packet = 0xff;
+							conn_states[j].rx_packet = 0xff;
+							conn_states[j].noack_time = 0;
+							//FIXME: There should be a way to tell the main program the connection was reset
+							
 							flag = 1;
 					
 							break;
@@ -320,6 +329,29 @@ void idle_isr(void)
 						}
 						rx_queue_next--;
 					}
+				}
+				
+				if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 3] == STREAM_TYPE_CLOSE_CONN)
+				{
+					for(j = 0; j < MAX_CONNECTIONS; j++)
+					{
+						if(conn_states[j].mode != 0 && (((conn_states[j].ports >> 3) & 7) == port) &&
+							((conn_states[j].ports & 7) == remoteport) &&(conn_states[j].remote_addr == remote))
+						{
+							//close the connection
+							conn_states[j].mode = 0;
+						}
+					}
+					
+					//dequeue the packet (no matter if we matched anything)
+					
+					queue_free(rx_queue[i]);
+					
+					for(j = i; j < rx_queue_next-1; j++)
+					{
+						rx_queue[j] = rx_queue[j+1];
+					}
+					rx_queue_next--;
 				}
 			}
 		}
