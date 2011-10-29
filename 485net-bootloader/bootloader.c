@@ -8,7 +8,7 @@
 #define BOOT_EE_START		((void*)(0x3F0))
 #define BL_BLOCK_SIZE		32		//dictated by packet
 #define BL_BLK_PER_FL_BLK	(SPM_PAGESIZE / BL_BLOCK_SIZE)
-#define LIBRARY_START_BYTE	((void*)(0x6000))
+#define LIBRARY_START_BYTE	((void*)(0x5000))
 #define LIBRARY_END_BYTE	((void*)(0x6FFF))
 #define LIBRARY_BLOCKS		((LIBRARY_END_BYTE-LIBRARY_START_BYTE+1) / BL_BLOCK_SIZE)
 #define APP_BLOCKS			((int)LIBRARY_START_BYTE / BL_BLOCK_SIZE)
