@@ -31,6 +31,7 @@
 .set __vector_8, t2_300	//B
 .global __vector_7
 .set __vector_7, t2_150	//A
+//
 
 .global setAddr
 .set setAddr, LIB_ORIGIN + 7 * 4
