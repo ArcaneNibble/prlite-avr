@@ -8,12 +8,12 @@ void uart_tx_isr(void) __attribute__((signal));
 void t2_150(void) __attribute__((signal));
 void t2_300(void) __attribute__((signal));
 
-unsigned char current_rx_queue_slot = -1;
+unsigned char current_rx_queue_slot = 0xFF;
 unsigned char rx_packet_bytes;
 unsigned char srcaddr_keep;
 unsigned char ignore_bytes;
 
-unsigned char current_tx_queue_slot = -1;
+unsigned char current_tx_queue_slot = 0xFF;
 unsigned char tx_packet_bytes;
 unsigned char tx_packet_bytes_max;
 
@@ -32,14 +32,14 @@ void uart_rx_isr(void)
 		}
 		else
 		{
-			if(current_rx_queue_slot == -1)
+			if(current_rx_queue_slot == 0xFF)
 			{
 				//2nd byte (dest addr)
 				if(c == my_addr || my_addr == 0)
 				{
 					current_rx_queue_slot = queue_alloc_isr();
 					
-					if(current_rx_queue_slot != -1)
+					if(current_rx_queue_slot != 0xFF)
 					{
 						//if it didn't fail
 						rx_packet_bytes = 2;
@@ -79,7 +79,7 @@ void uart_rx_isr(void)
 void t2_150(void)
 {
 	//this isr is processed when a packet is done being recieved
-	if(current_rx_queue_slot != -1)
+	if(current_rx_queue_slot != 0xFF)
 	{
 		//we were receiving a packet that we cared about
 		
@@ -92,7 +92,7 @@ void t2_150(void)
 		//we don't dequeue the packet yet, the processing logic does that
 	}
 	
-	current_rx_queue_slot = -1;
+	current_rx_queue_slot = 0xFF;
 	rx_packet_bytes = 0;
 	ignore_bytes = 0;
 	srcaddr_keep = 0;
