@@ -374,6 +374,70 @@ void idle_isr(void)
 								//then we can clear the wait for ack
 								conn_states[j].mode = 2;
 								conn_states[j].noack_time = 0;
+								
+								if(conn_states[j].tx_packet != 0xFF)
+									queue_free(conn_states[j].tx_packet);	//now we don't need this
+							}
+						}
+					}
+					
+					//dequeue the packet (no matter if we matched anything)
+					
+					queue_free(rx_queue[i]);
+					
+					for(j = i; j < rx_queue_next-1; j++)
+					{
+						rx_queue[j] = rx_queue[j+1];
+					}
+					rx_queue_next--;
+				}
+				
+				if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 3] == STREAM_TYPE_NACK)
+				{
+					for(j = 0; j < MAX_CONNECTIONS; j++)
+					{
+						if((((conn_states[j].ports >> 3) & 7) == port) &&
+							((conn_states[j].ports & 7) == remoteport) && (conn_states[j].remote_addr == remote))
+						{
+							if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == NACK_BUSY)
+							{
+								//then we simply transmit it again
+								if(conn_states[j].tx_packet != 0xFF)	//sanity check
+									tx_queue[tx_queue_next++] = conn_states[j].tx_packet | 0x80;
+							}
+							else if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == NACK_WRONGSEQ)
+							{
+								//then we fix up the seq and send our packet again
+								
+								if(conn_states[j].tx_packet != 0xFF)	//sanity check
+								{
+									conn_states[j].tx_seq = (unsigned int)(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 4]) | (((unsigned int)(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 5])) << 8); 
+									
+									packet_queue[conn_states[j].tx_packet * MAX_PACKET_SIZE + 4] = conn_states[j].tx_seq & 0xFF;
+									packet_queue[conn_states[j].tx_packet * MAX_PACKET_SIZE + 5] = (conn_states[j].tx_seq >> 8) & 0xFF;
+									
+									tx_queue[tx_queue_next++] = conn_states[j].tx_packet | 0x80;
+								}
+							}
+							else if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == NACK_ALREADYOPEN)
+							{
+								if(conn_states[j].mode == 1)
+								{
+									//then this is ok actually
+									
+									conn_states[j].mode = 2;
+									conn_states[j].noack_time = 0;
+								}
+							}
+							else if(packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == NACK_NOTLISTENING || packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 6] == NACK_NOTCONNECTED)
+							{
+								//uh oh...
+								conn_states[j].mode = 100;
+							}
+							else
+							{
+								//WTF?
+								//do nothing
 							}
 						}
 					}
