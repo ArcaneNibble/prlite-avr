@@ -5,7 +5,7 @@
 void getVersion(char *v)
 {
 	v[0] = '0';	//major
-	v[1] = '0';	//minor
+	v[1] = '1';	//minor
 	v[2] = '0';	//revision
 	v[3] = '0';	//unused
 }
