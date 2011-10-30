@@ -31,7 +31,7 @@ void idle_isr(void)
 	//the first thing we want to do is increase the last packet interval on anything waiting for an ack
 	for(i = 0; i < MAX_CONNECTIONS; i++)
 	{
-		if(conn_states[i].mode == 3)
+		if(conn_states[i].mode == 3 || conn_states[i].mode == 1)
 		{
 			conn_states[i].noack_time++;
 		}
@@ -453,6 +453,21 @@ void idle_isr(void)
 					rx_queue_next--;
 				}
 			}
+		}
+	}
+	
+	//now we need to handle timeouts
+	for(i = 0; i < MAX_CONNECTIONS; i++)
+	{
+		if(conn_states[i].mode == 1 && conn_states[i].noack_time >= TIMEOUT)
+		{
+			//failed to open connection
+			conn_states[i].mode = 100;
+		}
+		else if(conn_states[i].mode == 3 && conn_states[i].noack_time >= TIMEOUT)
+		{
+			if(conn_states[i].tx_packet != 0xff)
+				tx_queue[tx_queue_next++] = conn_states[j].tx_packet | 0x80;
 		}
 	}
 }
