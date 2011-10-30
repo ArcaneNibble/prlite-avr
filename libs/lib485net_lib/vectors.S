@@ -10,12 +10,27 @@
 .global uart_tx_isr
 .set uart_tx_isr, LIB_ORIGIN + 3 * 4
 
+//
+.global __vector_18
+.set __vector_18, uart_rx_isr
+.global __vector_20
+.set __vector_20, uart_tx_isr
+//
+
 .global t2_150
 .set t2_150, LIB_ORIGIN + 4 * 4
 .global t2_300
 .set t2_300, LIB_ORIGIN + 5 * 4
 .global idle_isr
 .set idle_isr, LIB_ORIGIN + 6 * 4
+
+//
+.global __vector_9
+.set __vector_9, idle_isr
+.global __vector_8
+.set __vector_8, t2_300	//B
+.global __vector_7
+.set __vector_7, t2_150	//A
 
 .global setAddr
 .set setAddr, LIB_ORIGIN + 7 * 4
