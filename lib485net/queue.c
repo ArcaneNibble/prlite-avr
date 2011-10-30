@@ -12,6 +12,7 @@ unsigned char queue_alloc_isr(void)
 		{
 			packet_queue_status[i] = 1;
 			ret = i;
+			break;
 		}
 	}
 	

@@ -1,11 +1,11 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-static const void __attribute__ ((unused)) (*txrx_enable)(void) = (const void (*)(void))0x7ff8;
-static const void __attribute__ ((unused)) (*tx_on)(void) = (const void (*)(void))0x7ff0;
-static const void __attribute__ ((unused)) (*tx_off)(void) = (const void (*)(void))0x7ff2;
-static const void __attribute__ ((unused)) (*rx_on)(void) = (const void (*)(void))0x7ff4;
-static const void __attribute__ ((unused)) (*rx_off)(void) = (const void (*)(void))0x7ff6;
+static const void __attribute__ ((unused)) (*txrx_enable)(void) = (const void (*)(void))(0x7ff8 / 2);
+static const void __attribute__ ((unused)) (*tx_on)(void) = (const void (*)(void))(0x7ff0 / 2);
+static const void __attribute__ ((unused)) (*tx_off)(void) = (const void (*)(void))(0x7ff2 / 2);
+static const void __attribute__ ((unused)) (*rx_on)(void) = (const void (*)(void))(0x7ff4 / 2);
+static const void __attribute__ ((unused)) (*rx_off)(void) = (const void (*)(void))(0x7ff6 / 2);
 
 //4 bytes required at v
 extern void getVersion(char *v);
