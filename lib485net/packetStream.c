@@ -93,7 +93,7 @@ extern unsigned char sendStream(void *conn, const unsigned char *packet, unsigne
 	
 	slot = queue_alloc();
 	
-	if(slot == -1)
+	if(slot == 0xff)
 		return 1;
 		
 	packet_queue_status[slot] = len + 7;

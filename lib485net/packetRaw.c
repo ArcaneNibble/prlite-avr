@@ -13,7 +13,7 @@ unsigned char sendRaw(const unsigned char *packet, unsigned char len)
 	
 	slot = queue_alloc();
 	
-	if(slot == -1)
+	if(slot == 0xff)
 		return 1;
 	
 	//this should be safe, one byte
@@ -38,7 +38,7 @@ unsigned char recvRaw(unsigned char *packet, unsigned char *len)
 		return 1;
 	
 	cli();
-	if(rx_queue_next == 0) slot = -1;
+	if(rx_queue_next == 0) slot = 0xff;
 	else
 	{
 		slot = rx_queue[0];
@@ -49,7 +49,7 @@ unsigned char recvRaw(unsigned char *packet, unsigned char *len)
 	}
 	sei();
 	
-	if(slot == -1)
+	if(slot == 0xff)
 	{
 		*len = 0;
 		//this is a success, no packets

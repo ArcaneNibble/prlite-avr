@@ -103,7 +103,7 @@ void idle_isr(void)
 							
 							slot = queue_alloc_isr();
 							
-							if(slot != -1)
+							if(slot != 0xff)
 							{
 								packet_queue_status[slot] = 8;
 								packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;
@@ -142,7 +142,7 @@ void idle_isr(void)
 							
 							slot = queue_alloc_isr();
 							
-							if(slot != -1)
+							if(slot != 0xff)
 							{
 								packet_queue_status[slot] = 8;
 								packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;
@@ -169,7 +169,7 @@ void idle_isr(void)
 							
 						slot = queue_alloc_isr();
 						
-						if(slot != -1)
+						if(slot != 0xff)
 						{
 							packet_queue_status[slot] = 8;
 							packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;
@@ -215,7 +215,7 @@ void idle_isr(void)
 							
 								slot = queue_alloc_isr();
 								
-								if(slot != -1)
+								if(slot != 0xff)
 								{
 									packet_queue_status[slot] = 8;
 									packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;
@@ -250,7 +250,7 @@ void idle_isr(void)
 							
 								slot = queue_alloc_isr();
 								
-								if(slot != -1)
+								if(slot != 0xff)
 								{
 									packet_queue_status[slot] = 8;
 									packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;
@@ -272,7 +272,7 @@ void idle_isr(void)
 							
 								slot = queue_alloc_isr();
 								
-								if(slot != -1)
+								if(slot != 0xff)
 								{
 									packet_queue_status[slot] = 8;
 									packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;
@@ -304,7 +304,7 @@ void idle_isr(void)
 							
 						slot = queue_alloc_isr();
 						
-						if(slot != -1)
+						if(slot != 0xff)
 						{
 							packet_queue_status[slot] = 8;
 							packet_queue[slot * MAX_PACKET_SIZE + 0] = my_addr;

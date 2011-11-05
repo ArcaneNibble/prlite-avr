@@ -46,7 +46,7 @@ extern unsigned char sendDGram(void *conn_, const unsigned char *packet, unsigne
 	
 	slot = queue_alloc();
 	
-	if(slot == -1)
+	if(slot == 0xff)
 		return 1;
 	
 	//this should be safe, one byte
@@ -79,7 +79,7 @@ extern unsigned char recvDGram(void *conn_, unsigned char *packet, unsigned char
 	if(conn_ == NULL || packet == NULL || len == NULL)
 		return 1;
 		
-	slot = queueidx = -1;
+	slot = queueidx = 0xff;
 	
 	cli();
 	if(rx_queue_next != 0)
@@ -96,7 +96,7 @@ extern unsigned char recvDGram(void *conn_, unsigned char *packet, unsigned char
 			}
 		}
 		
-		if(slot != -1)
+		if(slot != 0xff)
 		{
 			for(i = queueidx; i < rx_queue_next-1; i++)
 				rx_queue[i] = rx_queue[i+1];
@@ -105,7 +105,7 @@ extern unsigned char recvDGram(void *conn_, unsigned char *packet, unsigned char
 	}
 	sei();
 	
-	if(slot == -1)
+	if(slot == 0xff)
 	{
 		*len = 0;
 		//this is a success, no packets
