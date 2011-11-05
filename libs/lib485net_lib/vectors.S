@@ -13,8 +13,8 @@
 //
 .global __vector_18
 .set __vector_18, uart_rx_isr
-.global __vector_20
-.set __vector_20, uart_tx_isr
+.global __vector_19
+.set __vector_19, uart_tx_isr
 //
 
 .global t2_150
