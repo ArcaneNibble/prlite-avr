@@ -533,8 +533,64 @@ the_beginning_of_the_loop:
 }
 #endif
 
+signed int position;
+signed char orientation;
+
+/***********************************
+** updatePosition
+***********************************/
+void updatePosition(void)
+{	//function either increments or decrements the "position"
+	//variable based on the new inputs.  This ISR is executed every time
+	//there is a pin change on either sensor pin (PD2, PD3)
+	
+	signed char pos_adv_val;
+	unsigned char newstate;	    //this loads the new state of the two encoder inputs
+	static unsigned char oldstate = 0;
+	
+	//mask away all but the correct two bits
+	newstate = ((PIND & 0x0C) >> 2);	//mask = 0000,1100
+	
+	pos_adv_val = orientation * (signed char)(-1 + (((newstate & 0x01) << 1)^(oldstate & 0x02)));
+	position += pos_adv_val;
+	//pls_accum[idx_ctr] += pos_adv_val;
+
+	oldstate = newstate;
+
+}
+
+/***********************************
+** INT0 interrupt subroutine
+***********************************/
+ISR(INT0_vect)	//input pin change interrupt INT 0 (on PD2)
+{	
+	updatePosition();
+}
+
+/***********************************
+** INT0 interrupt subroutine
+***********************************/
+ISR(INT1_vect)	//input pin change interrupt INT1 (on PD3)
+{	
+	updatePosition();
+}
+
 int main(void)
 {
 	initLib();
 	setAddr(bl_get_addr());
+	
+	ICR1 = 40000;	//20 ms with 16 Mhz clock with /8 (2Mhz)
+	//valid range for pwm is 2000 (1 ms) to 4000 (2 ms)  idle is 3000
+	OCR1A = 3000;
+	TCCR1A = _BV(COM1A1) | _BV(WGM11);	//clear on match, reset on rollover
+	TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS11);		//mode 14 (reset on icr1)   clock div 8
+	//TIMSK1 = _BV(TOIE1);
+
+	DDRB |= _BV(PB1);	//enable pwm port
+
+	DDRD &= ~(_BV(PD2) | _BV(PD3));	//enable encoder input
+	//encoder 0		a = pd2 b = pd3
+	EICRA = _BV(ISC10) | _BV(ISC00);	//both edges on int0 and int1
+	EIMSK = _BV(INT0) | _BV(INT1);	//enable int0 and int1
 }
