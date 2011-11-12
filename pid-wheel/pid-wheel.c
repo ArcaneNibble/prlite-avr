@@ -1,9 +1,10 @@
 #include <avr/io.h>
-#include <avr/eeprom.h> 
 #include <avr/interrupt.h>
 #include <util/atomic.h>
-#include <util/twi.h>
+#include "lib485net.h"
+#include "bl_support.h"
 
+#if 0
 typedef signed long FIXED1616;
 typedef unsigned long u32;
 typedef signed int s16;
@@ -529,4 +530,11 @@ the_beginning_of_the_loop:
 	}
 
 	return 0;
+}
+#endif
+
+int main(void)
+{
+	initLib();
+	setAddr(bl_get_addr());
 }
