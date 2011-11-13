@@ -4,18 +4,32 @@
 #include "lib485net.h"
 #include "bl_support.h"
 
-#if 0
 typedef signed long FIXED1616;
-typedef unsigned long u32;
-typedef signed int s16;
-typedef unsigned int u16;
-typedef unsigned char u8;
 
-#include "i2c-net-packets.h"
+typedef struct
+{
+	FIXED1616 p;
+	FIXED1616 i;
+	FIXED1616 d;
+	unsigned char orientation;
+} __attribute__((__packed__)) pid_gains_packet;
 
-unsigned char I2C_SLAVE_ADDR;
-unsigned char I2C_DEST_ADDR;
-unsigned char tmp_new_dest;
+typedef struct
+{
+	signed int speed;
+} __attribute__((__packed__)) setpoints_packet;
+
+typedef struct
+{
+	unsigned long interval_count;
+	signed int speed;
+
+	FIXED1616 debug_p;
+	FIXED1616 debug_i;
+	FIXED1616 debug_d;
+	unsigned int out;
+	unsigned int time;
+} __attribute__((__packed__)) wheel_status_packet;
 
 inline FIXED1616 int_to_fixed(int i)
 {
@@ -36,6 +50,18 @@ inline FIXED1616 fixed_mult(FIXED1616 a, FIXED1616 b)
 
 	return (FIXED1616)tmp;
 }
+
+#if 0
+typedef unsigned long u32;
+typedef signed int s16;
+typedef unsigned int u16;
+typedef unsigned char u8;
+
+#include "i2c-net-packets.h"
+
+unsigned char I2C_SLAVE_ADDR;
+unsigned char I2C_DEST_ADDR;
+unsigned char tmp_new_dest;
 
 volatile pid_gains_packet new_gains;
 volatile unsigned char gains_changed;
@@ -301,42 +327,6 @@ ISR(TWI_vect)
 	}
 }
 
-ISR(INT0_vect)
-{
-	unsigned char z = PIND;
-	unsigned char a = z & _BV(PD2);
-	unsigned char b = z & _BV(PD4);
-
-	if(new_gains.w0_reverse)
-	{
-		if((a && !b) || (!a && b)) ticks0++;
-		if((a && b) || (!a && !b)) ticks0--;
-
-	}
-	else
-	{
-		if((a && !b) || (!a && b)) ticks0--;
-		if((a && b) || (!a && !b)) ticks0++;
-	}
-}
-
-ISR(INT1_vect)
-{
-	unsigned char z = PIND;
-	unsigned char a = z & _BV(PD3);
-	unsigned char b = z & _BV(PD5);
-
-	if(new_gains.w1_reverse)
-	{
-		if((a && !b) || (!a && b)) ticks1++;
-		if((a && b) || (!a && !b)) ticks1--;
-	}
-	else
-	{
-		if((a && !b) || (!a && b)) ticks1--;
-		if((a && b) || (!a && !b)) ticks1++;
-	}
-}
 
 ISR(TIMER1_OVF_vect)
 {
@@ -577,6 +567,18 @@ ISR(INT1_vect)	//input pin change interrupt INT1 (on PD3)
 
 int main(void)
 {
+	FIXED1616 kp=0, ki=0, kd=0;
+	signed int setpoint=0;
+	signed int currentspeed;
+	void *gains_dgram, *setpoints_dgram, *status_dgram;
+	unsigned long interval = 0;
+	signed int oldposition = 0;
+	unsigned char packet_buf[64];
+	unsigned char packet_len;
+	pid_gains_packet *gains;
+	setpoints_packet *setpoints;
+	wheel_status_packet *status;
+
 	initLib();
 	setAddr(bl_get_addr());
 	
@@ -593,4 +595,89 @@ int main(void)
 	//encoder 0		a = pd2 b = pd3
 	EICRA = _BV(ISC10) | _BV(ISC00);	//both edges on int0 and int1
 	EIMSK = _BV(INT0) | _BV(INT1);	//enable int0 and int1
+	
+	status_dgram = connectDGram(0xF0, 0, 7);	//pc port 7 is incoming status for everything
+	gains_dgram = listenDGram(1);
+	setpoints_dgram = listenDGram(2);
+	
+	gains = setpoints = status = &(packet_buf[0]);
+	
+	sei();
+	
+	while(1)
+	{
+		if(TIFR1 & _BV(TOV1))
+		{
+			TIFR1 = _BV(TOV1);
+			
+			//every 20 ms
+			if(recvDGram(gains_dgram, &(packet_buf[0]), &packet_len) == 0)
+			{
+				//there can be more than one, but not likely and 20 ms won't hurt
+				if(packet_len == sizeof(pid_gains_packet))
+				{
+					kp = gains->p;
+					ki = gains->i;
+					kd = gains->d;
+					orientation = gains->orientation;
+				}
+			}
+			
+			if(recvDGram(setpoints_dgram, &(packet_buf[0]), &packet_len) == 0)
+			{
+				if(packet_len == sizeof(setpoints_packet))
+				{
+					setpoint = setpoints->speed;
+				}
+			}
+			
+			
+			ATOMIC_BLOCK(ATOMIC_FORCEON)
+			{
+				currentspeed = position - oldposition;
+				oldposition = position;
+			}
+			
+			{
+				signed int err;
+				FIXED1616 errf;
+				static FIXED1616 i = 0;
+				static FIXED1616 old_err = 0;
+				FIXED1616 d;
+				FIXED1616 pout, iout, dout, outf;
+				signed int newval;
+				
+				err = setpoint - currentspeed;
+				errf = int_to_fixed(err);
+				
+				i += errf;
+				d = errf - old_err;
+				old_err = errf;
+				
+				pout = fixed_mult(errf, kp);
+				iout = fixed_mult(errf, ki);
+				dout = fixed_mult(errf, kd);
+				
+				outf = pout + iout + dout;
+				
+				newval = fixed_to_int(outf);
+				newval += 3000;
+				
+				if(newval > 4000) newval = 4000;
+				if(newval < 2000) newval = 2000;
+				
+				OCR1A = newval;
+				
+				status->interval_count = interval++;
+				status->speed = currentspeed;
+				status->debug_p = pout;
+				status->debug_i = iout;
+				status->debug_d = dout;
+				status->out = newval;
+				status->time = TCNT1;
+			}
+			
+			sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
+		}
+	}
 }
