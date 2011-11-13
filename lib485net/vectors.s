@@ -35,3 +35,6 @@ _jumptable:
 	jmp sendStream
 	jmp recvStream
 	jmp closeStream
+
+	#new in 0.1.1
+	jmp recvDGramLL

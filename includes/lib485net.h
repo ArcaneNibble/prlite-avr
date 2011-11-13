@@ -9,6 +9,7 @@ extern void *connectDGram(unsigned char addr, unsigned char localport, unsigned 
 extern void *listenDGram(unsigned char localport);
 extern unsigned char sendDGram(void *conn, const unsigned char *packet, unsigned char len);
 extern unsigned char recvDGram(void *conn, unsigned char *packet, unsigned char *len);
+extern unsigned char recvDGramLL(void *conn, unsigned char *packet, unsigned char *len);
 extern void closeDGram(void *conn);
 extern void *listenStream(unsigned char localport);
 extern void *connectStream(unsigned char addr, unsigned char localport, unsigned char remoteport);

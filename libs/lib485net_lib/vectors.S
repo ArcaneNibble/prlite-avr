@@ -67,3 +67,7 @@
 .set recvStream, LIB_ORIGIN + 20 * 4
 .global closeStream
 .set closeStream, LIB_ORIGIN + 21 * 4
+
+#new in 0.1.1
+.global closeStream
+.set closeStream, LIB_ORIGIN + 22 * 4

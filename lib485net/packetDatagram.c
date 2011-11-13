@@ -133,3 +133,68 @@ extern unsigned char recvDGram(void *conn_, unsigned char *packet, unsigned char
 	
 	return 0;
 }
+
+extern unsigned char recvDGramLL(void *conn_, unsigned char *packet, unsigned char *len)
+{
+	unsigned int conn;
+	unsigned char slot, queueidx, i, len_, csum;
+	
+	conn = (unsigned int)(conn_);
+
+	if(conn_ == NULL || packet == NULL || len == NULL)
+		return 1;
+		
+	slot = queueidx = 0xff;
+	
+	cli();
+	if(rx_queue_next != 0)
+	{
+		//slot = rx_queue[0];
+		for(i = 0; i < rx_queue_next; i++)
+		{
+			if(((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 2] & DATAGRAM_PROTOCOL_MASK) == DATAGRAM_PROTOCOL)
+				&& ((packet_queue[rx_queue[i] * MAX_PACKET_SIZE + 2] & 7) == ((conn >> 8) & 7)))	//vomit	//what it actually does is check proto and port
+			{
+				slot = rx_queue[i];
+				queueidx = i;
+				break;
+			}
+		}
+		
+		if(slot != 0xff)
+		{
+			for(i = queueidx; i < rx_queue_next-1; i++)
+				rx_queue[i] = rx_queue[i+1];
+			rx_queue_next--;
+		}
+	}
+	sei();
+	
+	if(slot == 0xff)
+	{
+		*len = 0;
+		//this is a success, no packets
+		return 0;
+	}
+	
+	len_ = packet_queue_status[slot];
+	
+	csum = doChecksum(&(packet_queue[slot * MAX_PACKET_SIZE]), len_ - 1);
+	if(csum != packet_queue[slot * MAX_PACKET_SIZE + len_ - 1])
+	{
+		*len = 0;
+		//this is a success, but bad checksum
+		//fixme: better way to indicate?
+		
+		queue_free(slot);
+		
+		return 0;
+	}
+	
+	memcpy(packet, &(packet_queue[slot * MAX_PACKET_SIZE]), len_);
+	*len = len_;
+	
+	queue_free(slot);
+	
+	return 0;
+}
