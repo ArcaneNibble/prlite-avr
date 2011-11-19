@@ -11,7 +11,7 @@ typedef struct
 	FIXED1616 p;
 	FIXED1616 i;
 	FIXED1616 d;
-	unsigned char orientation;
+	signed char orientation;
 } __attribute__((__packed__)) pid_gains_packet;
 
 typedef struct
