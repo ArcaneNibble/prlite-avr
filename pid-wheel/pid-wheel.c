@@ -4,6 +4,8 @@
 #include "lib485net.h"
 #include "bl_support.h"
 
+#define SLOWDOWN_FACTOR	10
+
 typedef signed long FIXED1616;
 
 typedef struct
@@ -39,7 +41,7 @@ inline int fixed_to_int(FIXED1616 i)
 {
 	return i >> 16;
 }
-inline FIXED1616 fixed_mult(FIXED1616 a, FIXED1616 b)
+FIXED1616 fixed_mult(FIXED1616 a, FIXED1616 b)
 {
 	signed long long tmp;
 
@@ -47,6 +49,16 @@ inline FIXED1616 fixed_mult(FIXED1616 a, FIXED1616 b)
 	tmp *= (signed long long)(b);
 
 	tmp >>= 16;
+
+	return (FIXED1616)tmp;
+}
+FIXED1616 fixed_div(FIXED1616 a, FIXED1616 b)
+{
+	signed long long tmp;
+
+	tmp = (signed long long)(a);
+	tmp *= 65536;
+	tmp /= (signed long long)(b);
 
 	return (FIXED1616)tmp;
 }
@@ -97,7 +109,7 @@ int main(void)
 {
 	FIXED1616 kp=0, ki=0, kd=0;
 	signed int setpoint=0;
-	signed int currentspeed;
+	signed int numticks;
 	void *gains_dgram, *setpoints_dgram, *status_dgram;
 	unsigned long interval = 0;
 	signed int oldposition = 0;
@@ -106,6 +118,8 @@ int main(void)
 	pid_gains_packet *gains;
 	setpoints_packet *setpoints;
 	wheel_status_packet *status;
+	unsigned char delay = SLOWDOWN_FACTOR;
+	int speed_intervals = 0;
 
 	initLib();
 	setAddr(bl_get_addr());
@@ -148,6 +162,7 @@ int main(void)
 					ki = gains->i;
 					kd = gains->d;
 					orientation = gains->orientation;
+					delay = 1;
 				}
 			}
 			
@@ -156,56 +171,66 @@ int main(void)
 				if(packet_len == sizeof(setpoints_packet))
 				{
 					setpoint = setpoints->speed;
+					delay = 1;
 				}
 			}
 			
+			speed_intervals++;
 			
-			ATOMIC_BLOCK(ATOMIC_FORCEON)
+			if(--delay == 0)
 			{
-				currentspeed = position - oldposition;
-				oldposition = position;
+				delay = SLOWDOWN_FACTOR;
+				ATOMIC_BLOCK(ATOMIC_FORCEON)
+				{
+					numticks = position - oldposition;
+					oldposition = position;
+				}
+				
+				{
+					FIXED1616 errf;
+					static FIXED1616 i = 0;
+					static FIXED1616 old_err = 0;
+					FIXED1616 d;
+					FIXED1616 pout, iout, dout, outf;
+					signed int newval;
+					FIXED1616 currentspeed;
+					
+					currentspeed = int_to_fixed(numticks * 50);
+					currentspeed = fixed_div(currentspeed, int_to_fixed(speed_intervals));
+					//if I do not ever cut short the interval, this would simply be numticks*5
+					
+					errf = int_to_fixed(setpoint) - currentspeed;
+					
+					i += errf;
+					d = errf - old_err;
+					old_err = errf;
+					
+					pout = fixed_mult(errf, kp);
+					iout = fixed_mult(errf, ki);
+					dout = fixed_mult(errf, kd);
+					
+					outf = pout + iout + dout;
+					
+					newval = fixed_to_int(outf);
+					newval += 3000;
+					
+					if(newval > 4000) newval = 4000;
+					if(newval < 2000) newval = 2000;
+					
+					OCR1A = newval;
+					
+					status->interval_count = interval++;
+					status->speed = numticks;
+					status->debug_p = pout;
+					status->debug_i = iout;
+					status->debug_d = dout;
+					status->out = newval;
+					status->time = TCNT1;
+				}
+				
+				speed_intervals = 0;
+				sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
 			}
-			
-			{
-				signed int err;
-				FIXED1616 errf;
-				static FIXED1616 i = 0;
-				static FIXED1616 old_err = 0;
-				FIXED1616 d;
-				FIXED1616 pout, iout, dout, outf;
-				signed int newval;
-				
-				err = setpoint - currentspeed;
-				errf = int_to_fixed(err);
-				
-				i += errf;
-				d = errf - old_err;
-				old_err = errf;
-				
-				pout = fixed_mult(errf, kp);
-				iout = fixed_mult(errf, ki);
-				dout = fixed_mult(errf, kd);
-				
-				outf = pout + iout + dout;
-				
-				newval = fixed_to_int(outf);
-				newval += 3000;
-				
-				if(newval > 4000) newval = 4000;
-				if(newval < 2000) newval = 2000;
-				
-				OCR1A = newval;
-				
-				status->interval_count = interval++;
-				status->speed = currentspeed;
-				status->debug_p = pout;
-				status->debug_i = iout;
-				status->debug_d = dout;
-				status->out = newval;
-				status->time = TCNT1;
-			}
-			
-			sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
 		}
 	}
 }
