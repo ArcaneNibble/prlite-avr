@@ -92,7 +92,7 @@ int main(void)
 				}
 			}
 			
-			curval = read_adc(0);
+			curval = read_adc(2);
 			
 			if(curval < minval)			fw_rev(1);
 			else if(curval > maxval)	fw_rev(0);
