@@ -111,7 +111,7 @@ $(BINDIR):
 $(BINDIR):	$(LIBSDIR) $(INCLUDESDIR)
 
 $(eval $(call build-program,pid-wheel,libs/lib485net_lib.a libs/bl_support.a))
-$(eval $(call build-program,linact,))
+$(eval $(call build-program,linact,libs/lib485net_lib.a libs/bl_support.a))
 $(eval $(call build-program,i2c-serial,))
 $(eval $(call build-program,485net-bootloader,))
 $(eval $(call build-program,lib485net,))
@@ -121,6 +121,7 @@ $(eval $(call build-program,test485net,libs/lib485net_lib.a))
 
 test485net/test485net.elf : LDFLAGS += -Wl,--defsym=__stack=0x800500
 pid-wheel/pid-wheel.elf : LDFLAGS += -Wl,--defsym=__stack=0x800500
+linact/linact.elf : LDFLAGS += -Wl,--defsym=__stack=0x800500
 
 485net-bootloader/485net-bootloader.elf : LDFLAGS += -Wl,--undefined=_jumptable
 485net-bootloader/485net-bootloader.hex : OBJCOPYFLAGS += -j .jumps
