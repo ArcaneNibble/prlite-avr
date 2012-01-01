@@ -107,7 +107,6 @@ int main(void)
 	}
 }
 
-#if 0
 
 #include <avr/io.h>
 #include <avr/eeprom.h> 
