@@ -13,6 +13,8 @@
 #define LIBRARY_BLOCKS		((LIBRARY_END_BYTE-LIBRARY_START_BYTE+1) / BL_BLOCK_SIZE)
 #define APP_BLOCKS			((int)LIBRARY_START_BYTE / BL_BLOCK_SIZE)
 
+extern const unsigned char crc8_tab[] PROGMEM;
+
 typedef struct
 {
 	unsigned char address;
@@ -60,6 +62,14 @@ inline void adler_add_byte(unsigned char b)
 inline unsigned long adler_get_result(void)
 {
 	return (adler_b << 16) | adler_a;
+}
+
+#define CRC8_INIT 0xFF
+#define CRC8_GOOD 0x9F
+unsigned char crc8_byte(unsigned char b, unsigned char crc)
+{
+	crc = pgm_read_byte(&(crc8_tab[(crc ^ b) & 0xff]));
+	return crc;
 }
 
 void txrx_enable(void)
@@ -173,8 +183,13 @@ ISR(TIMER2_COMPA_vect)
 	{
 		if(bufaddr == 5 && buf[1] == 0xFE && buf[2] == 0xC0)
 		{
-			b = buf[0] + buf[1] + buf[2] + buf[3] + buf[4];
-			if(b == 0)
+			//b = buf[0] + buf[1] + buf[2] + buf[3] + buf[4];
+			b = crc8_byte(buf[0], CRC8_INIT);
+			b = crc8_byte(buf[1], b);
+			b = crc8_byte(buf[2], b);
+			b = crc8_byte(buf[3], b);
+			b = crc8_byte(buf[4], b);
+			if(b == CRC8_GOOD)
 			{
 				wantrx = 0;
 				timer2_off();
@@ -190,10 +205,11 @@ ISR(TIMER2_COMPA_vect)
 	{
 		if(bufaddr == (5 + BL_BLOCK_SIZE) && buf[1] == b_data.address && buf[2] == 0xC1 && buf[3] == (booting_block & 0xFF))
 		{
-			b = 0;
+			b = 0xff;
 			for(i = 0; i < bufaddr; i++)
-				b += buf[i];
-			if(b == 0)
+				//b += buf[i];
+				b = crc8_byte(buf[i], b);
+			if(b == CRC8_GOOD)
 			{
 				wantrx = 0;
 				timer2_off();
@@ -207,10 +223,11 @@ ISR(TIMER2_COMPA_vect)
 	{
 		if(bufaddr == (6 + BL_BLOCK_SIZE) && buf[1] == b_data.address && buf[2] == 0xC2 && buf[3] == (booting_block & 0xFF) && buf[4] == ((booting_block >> 8) & 0xFF))
 		{
-			b = 0;
+			b = 0xff;
 			for(i = 0; i < bufaddr; i++)
-				b += buf[i];
-			if(b == 0)
+				//b += buf[i];
+				b = crc8_byte(buf[i], b);
+			if(b == CRC8_GOOD)
 			{
 				wantrx = 0;
 				timer2_off();
@@ -271,7 +288,7 @@ ISR(TIMER2_OVF_vect)
 				return;
 			if(!tx_with_checking(0xC0))
 				return;
-			if(!tx_with_checking(0x42))
+			if(!tx_with_checking(0xB9))
 				return;
 			
 			uart_rx_int_on();
@@ -407,11 +424,26 @@ void boot_common(void *addr, unsigned char cmdbyte, unsigned int blocks, unsigne
 	while(booting_block < blocks)
 	{
 		if(!hack)
-			output_csum = ~(b_data.address + 0x00 + cmdbyte + booting_block) + 1;
+		{
+			//output_csum = ~(b_data.address + 0x00 + cmdbyte + booting_block) + 1;
+			output_csum = 0xFF;
+			output_csum = crc8_byte(b_data.address, output_csum);
+			output_csum = crc8_byte(0x00, output_csum);
+			output_csum = crc8_byte(cmdbyte, output_csum);
+			output_csum = crc8_byte(booting_block, output_csum);
+			output_csum = output_csum ^ 0xFF;
+		}
 		else
 		{
 			//booting app
-			output_csum = ~(b_data.address + 0x00 + cmdbyte + (booting_block & 0xFF) + ((booting_block >> 8) & 0xFF)) + 1;
+			//output_csum = ~(b_data.address + 0x00 + cmdbyte + (booting_block & 0xFF) + ((booting_block >> 8) & 0xFF)) + 1;
+			output_csum = 0xFF;
+			output_csum = crc8_byte(b_data.address, output_csum);
+			output_csum = crc8_byte(0x00, output_csum);
+			output_csum = crc8_byte(cmdbyte, output_csum);
+			output_csum = crc8_byte(booting_block & 0xFF, output_csum);
+			output_csum = crc8_byte((booting_block >> 8) & 0xFF, output_csum);
+			output_csum = output_csum ^ 0xFF;
 		}
 	
 		wantrx = 0;

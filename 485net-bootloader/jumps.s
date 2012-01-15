@@ -7,3 +7,4 @@ _jumptable:
 	rjmp rx_on
 	rjmp rx_off
 	rjmp txrx_enable
+	rjmp crc8_byte
