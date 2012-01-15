@@ -5,8 +5,8 @@
 void getVersion(char *v)
 {
 	v[0] = '0';	//major
-	v[1] = '1';	//minor
-	v[2] = '1';	//revision
+	v[1] = '2';	//minor
+	v[2] = '0';	//revision
 	v[3] = '0';	//unused
 }
 
@@ -51,10 +51,11 @@ unsigned char doChecksum(const unsigned char *buf, unsigned char len)
 {
 	unsigned char sum, i;
 	
-	sum = 0;
+	sum = 0xff;
 	
 	for(i = 0; i < len; i++)
-		sum += buf[i];
+		//sum += buf[i];
+		sum = crc8_byte(buf[i], sum);
 	
-	return (unsigned char)(0x100 - ((unsigned int)(sum)));
+	return sum ^ 0xff;
 }
