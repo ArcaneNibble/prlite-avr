@@ -32,14 +32,14 @@ void initLib(void)
 	UCSR0C = _BV(UCSZ00) | _BV(UCSZ01);	//async uart, 8n1
 	UCSR0B = _BV(RXEN0) | _BV(TXEN0) | _BV(RXCIE0);	//enable tx, enable rx, enable rx interrupt
 	
-	txrx_enable();
-	rx_on();
-	
 	for(i = 0; i < QUEUE_SIZE; i++)
 		tx_queue[i] = 0xff;
 		
 	for(i = 0; i < QUEUE_SIZE; i++)
 		rx_queue[i] = 0xff;
+	
+	txrx_enable();
+	rx_on();
 }
 
 void setAddr(unsigned char a)
