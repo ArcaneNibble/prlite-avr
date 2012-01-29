@@ -22,5 +22,7 @@ extern unsigned char doChecksum(const unsigned char *buf, unsigned char len);
 #define TICKS_300US		38
 //actually 18.75
 #define TICKS_150US		19
+//24 us
+#define TICKS_1BYTETIMEOUT	3
 
 #endif

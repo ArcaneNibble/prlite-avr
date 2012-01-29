@@ -111,18 +111,35 @@ void t2_300(void)
 		UCSR0B = (UCSR0B & ~(_BV(RXCIE0))) | _BV(UDRIE0);
 		tx_on();
 	}
+	
+	//I think we need the next two lines, but I'm not sure
+	OCR2A = TCNT2 + TICKS_150US;
+	OCR2B = TCNT2 + TICKS_300US;
 }
 
 void uart_tx_isr(void)
 {
 	unsigned char c, i;
+	unsigned char time, newtime, txerr;
 	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes++];
+	time = newtime = TCNT2;
+	txerr = 0;
 	UDR0 = c;
 	
 	//there should not be any bytes before our own packet
-	while(!(UCSR0A & _BV(RXC0)));
+	while(!(UCSR0A & _BV(RXC0)))
+	{
+		newtime = TCNT2;
+		if((unsigned char)(newtime - time) >= TICKS_1BYTETIMEOUT)
+		{
+			txerr = 1;
+			break;		//if we didn't recieve our own byte within 24 us, something is wrong
+		}
+	}
 	
-	if(UDR0 != c)
+	if(!txerr)
+		txerr = UDR0 != c;	//this is because datasheet doesn't say what happens when we read empty fifo
+	if(txerr)
 	{
 		//we failed to transmit our packet
 		
