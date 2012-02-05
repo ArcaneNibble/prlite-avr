@@ -112,7 +112,6 @@ $(BINDIR):	$(LIBSDIR) $(INCLUDESDIR)
 
 $(eval $(call build-program,pid-wheel,libs/lib485net_lib.a libs/bl_support.a))
 $(eval $(call build-program,linact,libs/lib485net_lib.a libs/bl_support.a))
-$(eval $(call build-program,i2c-serial,))
 $(eval $(call build-program,485net-bootloader,))
 $(eval $(call build-program,lib485net,))
 $(eval $(call build-library,lib485net_lib))
