@@ -46,7 +46,7 @@ void stop(void)
 int main(void)
 {
 	unsigned int minval = 0, maxval = 0x3FF, curval;
-	void *setpoints_dgram, *status_dgram;
+	void *setpoints_dgram, *status_dgram, *reprogram_dgram;
 	unsigned char packet_buf[64];
 	unsigned char packet_len;
 	linact_setpoints_packet *setpoints;
@@ -72,6 +72,7 @@ int main(void)
 	
 	status_dgram = connectDGram(0xF0, 0, 7);	//pc port 7 is incoming status for everything
 	setpoints_dgram = listenDGram(1);
+	reprogram_dgram = listenDGram(7);
 	
 	setpoints = status = &(packet_buf[0]);
 	
@@ -89,6 +90,25 @@ int main(void)
 				{
 					minval = setpoints->minval;
 					maxval = setpoints->maxval;
+				}
+			}
+			
+			if(recvDGram(reprogram_dgram, &(packet_buf[0]), &packet_len) == 0)
+			{
+				if(packet_len == 8)
+				{
+					if(packet_buf[0] == 0x55 && 
+						packet_buf[1] == 0xAA && 
+						packet_buf[2] == 0x52 && 
+						packet_buf[3] == 0x53 && 
+						packet_buf[4] == 0x54 && 
+						packet_buf[5] == 0x21 && 
+						packet_buf[6] == 0xC3 && 
+						packet_buf[7] == 0x3C)
+					{
+						bl_erase_all_csum();
+						bl_reboot();
+					}
 				}
 			}
 			

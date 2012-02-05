@@ -5,5 +5,6 @@ extern void bl_reboot(void);
 extern unsigned char bl_get_addr(void);
 extern void bl_erase_lib_csum(void);
 extern void bl_erase_app_csum(void);
+extern void bl_erase_all_csum(void);
 
 #endif

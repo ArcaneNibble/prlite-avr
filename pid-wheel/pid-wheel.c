@@ -110,7 +110,7 @@ int main(void)
 	FIXED1616 kp=0, ki=0, kd=0;
 	signed int setpoint=0;
 	signed int numticks;
-	void *gains_dgram, *setpoints_dgram, *status_dgram;
+	void *gains_dgram, *setpoints_dgram, *status_dgram, *reprogram_dgram;
 	unsigned long interval = 0;
 	signed int oldposition = 0;
 	unsigned char packet_buf[64];
@@ -141,6 +141,7 @@ int main(void)
 	status_dgram = connectDGram(0xF0, 0, 7);	//pc port 7 is incoming status for everything
 	gains_dgram = listenDGram(1);
 	setpoints_dgram = listenDGram(2);
+	reprogram_dgram = listenDGram(7);
 	
 	gains = setpoints = status = &(packet_buf[0]);
 	
@@ -172,6 +173,25 @@ int main(void)
 				{
 					setpoint = setpoints->speed;
 					delay = 1;
+				}
+			}
+			
+			if(recvDGram(reprogram_dgram, &(packet_buf[0]), &packet_len) == 0)
+			{
+				if(packet_len == 8)
+				{
+					if(packet_buf[0] == 0x55 && 
+						packet_buf[1] == 0xAA && 
+						packet_buf[2] == 0x52 && 
+						packet_buf[3] == 0x53 && 
+						packet_buf[4] == 0x54 && 
+						packet_buf[5] == 0x21 && 
+						packet_buf[6] == 0xC3 && 
+						packet_buf[7] == 0x3C)
+					{
+						bl_erase_all_csum();
+						bl_reboot();
+					}
 				}
 			}
 			

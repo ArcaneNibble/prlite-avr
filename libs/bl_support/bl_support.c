@@ -61,3 +61,27 @@ void bl_erase_app_csum(void)
 		
 	eeprom_write_block(&d, (void*)(0x3F0), sizeof(d));
 }
+
+void bl_erase_all_csum(void)
+{
+	bootdata d;
+	unsigned char i;
+	unsigned char *dp;
+	
+	/*eeprom_read_block(&d, (void*)(0x3F0), sizeof(d));
+	d.library_adler = 0xffffffff;
+	d.application_adler = 0xffffffff;
+	
+	dp = (unsigned char *)(&d);
+	a = 0;
+	for(i=0;i<sizeof(d)-1;i++)
+		a += dp[i];
+	d.checksum = a;*/
+	
+	dp = (unsigned char *)(&d);
+	for(i=0;i<sizeof(d);i++)
+		dp[i] = 0xFF;
+		
+	eeprom_write_block(&d, (void*)(0x3F0), sizeof(d));
+}
+
