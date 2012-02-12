@@ -73,7 +73,7 @@ void uart_rx_isr(void)
 	
 	//delay interrupt
 	OCR2A = TCNT2 + TICKS_150US;
-	OCR2B = TCNT2 + TICKS_300US;
+	OCR2B = TCNT2 + TICKS_300US + (my_addr & 0x3F) * 2;
 }
 
 void t2_150(void)
@@ -114,7 +114,7 @@ void t2_300(void)
 	
 	//I think we need the next two lines, but I'm not sure
 	OCR2A = TCNT2 + TICKS_150US;
-	OCR2B = TCNT2 + TICKS_300US;
+	OCR2B = TCNT2 + TICKS_300US + (my_addr & 0x3F) * 2;
 }
 
 void uart_tx_isr(void)
@@ -149,7 +149,7 @@ void uart_tx_isr(void)
 		//fixme: do we need?
 		//delay interrupt
 		OCR2A = TCNT2 + TICKS_150US;
-		OCR2B = TCNT2 + TICKS_300US;
+		OCR2B = TCNT2 + TICKS_300US + (my_addr & 0x3F) * 2;
 		
 		tx_off();
 		
@@ -175,5 +175,5 @@ void uart_tx_isr(void)
 	
 	//delay interrupt
 	OCR2A = TCNT2 + TICKS_150US;
-	OCR2B = TCNT2 + TICKS_300US;
+	OCR2B = TCNT2 + TICKS_300US + (my_addr & 0x3F) * 2;
 }
