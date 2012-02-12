@@ -109,6 +109,32 @@ int main(void)
 						bl_erase_all_csum();
 						bl_reboot();
 					}
+					
+					else if(packet_buf[0] == 0x55 && 
+						packet_buf[1] == 0xAA && 
+						packet_buf[2] == 0x4C && 
+						packet_buf[3] == 0x4D && 
+						packet_buf[4] == 0x4E && 
+						packet_buf[5] == 0x4F && 
+						packet_buf[6] == 0xC3 && 
+						packet_buf[7] == 0x3C)
+					{
+						bl_erase_lib_csum();
+						bl_reboot();
+					}
+					
+					else if(packet_buf[0] == 0x55 && 
+						packet_buf[1] == 0xAA && 
+						packet_buf[2] == 0x41 && 
+						packet_buf[3] == 0x42 && 
+						packet_buf[4] == 0x43 && 
+						packet_buf[5] == 0x44 && 
+						packet_buf[6] == 0xC3 && 
+						packet_buf[7] == 0x3C)
+					{
+						bl_erase_app_csum();
+						bl_reboot();
+					}
 				}
 			}
 			
