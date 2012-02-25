@@ -32,6 +32,12 @@ void initLib(void)
 	UCSR0C = _BV(UCSZ00) | _BV(UCSZ01);	//async uart, 8n1
 	UCSR0B = _BV(RXEN0) | _BV(TXEN0) | _BV(RXCIE0);	//enable tx, enable rx, enable rx interrupt
 	
+	//initialize pin change
+	//USER CODE CANNOT USE PCINT16-23
+	PCMSK2 = _BV(PCINT16);
+	PCICR &= ~(_BV(PCIE2));
+	PCIFR = _BV(PCIF2);
+	
 	for(i = 0; i < QUEUE_SIZE; i++)
 		tx_queue[i] = 0xff;
 		

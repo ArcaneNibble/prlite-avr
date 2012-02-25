@@ -74,6 +74,9 @@ void uart_rx_isr(void)
 	//delay interrupt
 	OCR2A = TCNT2 + TICKS_150US;
 	OCR2B = TCNT2 + TICKS_300US + (my_addr & 0x3F) * 2;
+	
+	//clear pin change flag
+	PCIFR = _BV(PCIF2);
 }
 
 void t2_150(void)
@@ -103,6 +106,21 @@ void t2_300(void)
 	if(tx_queue_next != 0)
 	{
 		//something to send
+		
+		if(PCIFR & _BV(PCIF2))
+		{
+			//this means that some transitions have happened since the last byte has been recieved. 
+			//this SHOULD mean that a byte is being sent out at this very moment
+			//but we haven't hit rx_isr yet because it isn't done
+			//if this is the case, we should back off NOW before we turn on the transmitter or do anything
+			
+			PCIFR = _BV(PCIF2);
+					
+			OCR2A = TCNT2 + TICKS_150US;
+			OCR2B = TCNT2 + TICKS_300US + (my_addr & 0x3F) * 2;
+			return;
+		}
+		
 		current_tx_queue_slot = tx_queue[0];
 		tx_packet_bytes = 0;
 		tx_packet_bytes_max = packet_queue_status[current_tx_queue_slot & 0x7F];
@@ -121,7 +139,6 @@ void uart_tx_isr(void)
 {
 	unsigned char c, i;
 	unsigned char txerr;
-	
 	
 	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes++];
 	UDR0 = c;
