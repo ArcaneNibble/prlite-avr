@@ -120,25 +120,20 @@ void t2_300(void)
 void uart_tx_isr(void)
 {
 	unsigned char c, i;
-	unsigned char time, newtime, txerr;
+	unsigned char txerr;
+	
+	
 	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes++];
-	time = newtime = TCNT2;
-	txerr = 0;
 	UDR0 = c;
 	
 	//there should not be any bytes before our own packet
-	while(!(UCSR0A & _BV(RXC0)))
-	{
-		newtime = TCNT2;
-		if((unsigned char)(newtime - time) >= TICKS_1BYTETIMEOUT)
-		{
-			txerr = 1;
-			break;		//if we didn't recieve our own byte within 24 us, something is wrong
-		}
-	}
+	while(!(UCSR0A & _BV(TXC0)));	//this time, dead loop is OK; always will transmit
 	
+	//at this point, the byte should have been received already (maybe we need to wait? probably not)
+	txerr = !(UCSR0A & _BV(RXC0));
 	if(!txerr)
 		txerr = UDR0 != c;	//this is because datasheet doesn't say what happens when we read empty fifo
+	
 	if(txerr)
 	{
 		//we failed to transmit our packet
