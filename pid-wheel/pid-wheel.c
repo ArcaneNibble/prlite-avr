@@ -243,6 +243,7 @@ int main(void)
 	wheel_status_packet *status;
 	unsigned char delay = SLOWDOWN_FACTOR;
 	int speed_intervals = 0;
+	unsigned char wait_cnt = 0;
 
 	initLib();
 	setAddr(bl_get_addr());
@@ -344,6 +345,7 @@ int main(void)
 				}
 			}
 			
+			#if 0
 			speed_intervals++;
 			
 			if(--delay == 0)
@@ -399,6 +401,60 @@ int main(void)
 				
 				speed_intervals = 0;
 				sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
+			}
+			#endif
+			
+			//We are here every 20 ms. We want to run the control loop every 200 ms.
+			if(++wait_cnt == 10)
+			{
+				signed int oldnumticks = 0;
+				FIXED1616 iaccum = 0;
+				wait_cnt = 0;
+				
+				ATOMIC_BLOCK(ATOMIC_FORCEON)
+				{
+					numticks = position - oldposition;
+					oldposition = position;
+				}
+				
+				//numticks = ticks/200 ms (a velocity measurement)
+				
+				FIXED1616 e = int_to_fixed(setpoint - numticks);
+				
+				FIXED1616 d = int_to_fixed(oldnumticks - numticks);		//-d(numticks)/dt	derivative on measurement
+				oldnumticks = numticks;
+				
+				FIXED1616 i = fixed_mult(ki, e);
+				iaccum += i;	//Brett Beuregard's trick
+				//integrate ki*e instead of integrating e and multiplying by ki
+				
+				if(iaccum > int_to_fixed(1000))
+					iaccum = int_to_fixed(1000);
+				else if(iaccum < int_to_fixed(-1000))
+					iaccum = int_to_fixed(-1000);
+				
+				FIXED1616 pout, dout, outf;
+				pout = fixed_mult(ki, e);
+				dout = fixed_mult(kd, d);
+				outf = pout + iaccum + dout;
+				
+				signed int newval = fixed_to_int(outf);
+				if(newval > 1000)
+					newval = 1000;
+				else if(newval < -1000)
+					newval = -1000;
+				
+				newval += 3000;
+
+				OCR1A = newval;
+				
+				status->interval_count = interval++;
+				status->speed = numticks;
+				status->debug_p = pout;
+				status->debug_i = iaccum;
+				status->debug_d = dout;
+				status->out = newval;
+				status->time = TCNT1;
 			}
 		}
 	}
