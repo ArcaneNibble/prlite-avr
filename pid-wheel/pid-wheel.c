@@ -217,7 +217,7 @@ int main(void)
 					iaccum = int_to_fixed(-1000);
 				
 				FIXED1616 pout, dout, outf;
-				pout = fixed_mult(ki, e);
+				pout = fixed_mult(kp, e);
 				dout = fixed_mult(kd, d);
 				outf = pout + iaccum + dout;
 				
@@ -238,6 +238,8 @@ int main(void)
 				status->debug_d = dout;
 				status->out = newval;
 				status->time = TCNT1;
+				
+				sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
 			}
 		}
 	}
