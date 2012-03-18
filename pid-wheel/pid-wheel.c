@@ -76,16 +76,19 @@ int main(void)
 {
 	FIXED1616 kp=0, ki=0, kd=0;
 	signed int setpoint=0;
-	signed int numticks;
+	
 	void *gains_dgram, *setpoints_dgram, *status_dgram, *reprogram_dgram;
-	unsigned long interval = 0;
-	signed int oldposition = 0;
 	unsigned char packet_buf[64];
 	unsigned char packet_len;
 	pid_gains_packet *gains;
 	setpoints_packet *setpoints;
 	wheel_status_packet *status;
+	
+	signed int oldnumticks = 0;
+	unsigned long interval = 0;
+	signed int oldposition = 0;
 	unsigned char wait_cnt = 0;
+	FIXED1616 iaccum = 0;
 
 	initLib();
 	setAddr(bl_get_addr());
@@ -188,10 +191,9 @@ int main(void)
 			//We are here every 20 ms. We want to run the control loop every 200 ms.
 			if(++wait_cnt == 10)
 			{
-				signed int oldnumticks = 0;
-				FIXED1616 iaccum = 0;
 				wait_cnt = 0;
 				
+				signed int numticks;
 				ATOMIC_BLOCK(ATOMIC_FORCEON)
 				{
 					numticks = position - oldposition;
