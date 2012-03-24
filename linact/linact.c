@@ -139,6 +139,15 @@ int main(void)
 						bl_erase_app_csum();
 						bl_reboot();
 					}
+					
+					else if(packet_buf[0] == 0x55 && 
+						packet_buf[1] == 0xAA && 
+						packet_buf[2] == 0x4D && 
+						packet_buf[3] == 0x55)
+					{
+						bl_program_multicast_groups(packet_buf[4], packet_buf[5], packet_buf[6], packet_buf[7]);
+						bl_reboot();
+					}
 				}
 			}
 			

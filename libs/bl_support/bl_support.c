@@ -92,3 +92,24 @@ unsigned char bl_get_multicast_group(unsigned char which)
 		return 0xFF;
 	return eeprom_read_byte((void*)(0x3F0+9+which));
 }
+
+void bl_program_multicast_groups(unsigned char _a, unsigned char _b, unsigned char _c, unsigned char _d)
+{
+	bootdata d;
+	unsigned char i, a;
+	unsigned char *dp;
+	
+	eeprom_read_block(&d, (void*)(0x3F0), sizeof(d));
+	d.multicast_group[0] = _a;
+	d.multicast_group[1] = _b;
+	d.multicast_group[2] = _c;
+	d.multicast_group[3] = _d;
+	
+	dp = (unsigned char *)(&d);
+	a = 0;
+	for(i=0;i<sizeof(d)-1;i++)
+		a += dp[i];
+	d.checksum = a;
+		
+	eeprom_write_block(&d, (void*)(0x3F0), sizeof(d));
+}
