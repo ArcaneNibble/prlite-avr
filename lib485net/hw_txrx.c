@@ -34,8 +34,20 @@ void uart_rx_isr(void)
 		{
 			if(current_rx_queue_slot == 0xFF)
 			{
+				unsigned char masked_c_multicast = c & (unsigned char)~0xC0;
+				unsigned char masked_c_C0 = c & (unsigned char)0xC0;
+				unsigned char masked_c_F0 = c & (unsigned char)0xF0;
 				//2nd byte (dest addr)
-				if(c == my_addr || my_addr == 0)
+				if(c == my_addr || my_addr == 0 ||
+					((masked_c_C0 == 0xC0) && (masked_c_F0 != 0xF0) && 
+						((masked_c_multicast == multicast_groups[0]) || (masked_c_multicast == multicast_groups[1]) || 
+						(masked_c_multicast == multicast_groups[2]) || (masked_c_multicast == multicast_groups[3]))))
+				//the address is considered a match if
+				//	* it equals my_addr OR
+				//	* my_addr is not set (is 0) OR
+				//	* 	it has two high bits set AND
+				//	*	it does not have four high bits set AND
+				//	*	the 6 low bits match one of the four multicast groups
 				{
 					current_rx_queue_slot = queue_alloc_isr();
 					
