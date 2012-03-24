@@ -1,6 +1,7 @@
 extern void getVersion(char *v);
 extern void initLib(void);
 extern void setAddr(unsigned char a);
+extern void setMulticast(unsigned char group, unsigned char which);
 extern unsigned char doChecksum(const unsigned char *buf, unsigned char len);
 extern unsigned char sendRaw(const unsigned char *packet, unsigned char len);
 extern unsigned char recvRaw(unsigned char *packet, unsigned char *len);

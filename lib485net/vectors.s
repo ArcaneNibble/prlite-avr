@@ -38,3 +38,6 @@ _jumptable:
 
 	#new in 0.1.1
 	jmp recvDGramLL
+
+	#new in 0.3.0
+	jmp setMulticast

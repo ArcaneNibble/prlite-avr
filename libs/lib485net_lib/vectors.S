@@ -71,3 +71,7 @@
 #new in 0.1.1
 .global closeStream
 .set closeStream, LIB_ORIGIN + 22 * 4
+
+#new in 0.3.0
+.global setMulticast
+.set setMulticast, LIB_ORIGIN + 23 * 4
