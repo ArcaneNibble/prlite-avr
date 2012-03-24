@@ -14,4 +14,4 @@ unsigned long protocol_errors;
 
 unsigned char my_addr;
 
-unsigned char multicast_groups[];
+unsigned char multicast_groups[4];
