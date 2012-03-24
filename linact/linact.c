@@ -55,6 +55,10 @@ int main(void)
 
 	initLib();
 	setAddr(bl_get_addr());
+	setMulticast(bl_get_multicast_group(0), 0);
+	setMulticast(bl_get_multicast_group(1), 1);
+	setMulticast(bl_get_multicast_group(2), 2);
+	setMulticast(bl_get_multicast_group(3), 3);
 
 	ICR1 = 25000;	//100 ms with 16 Mhz clock with /64 (250 kHz)
 	TCCR1A = _BV(WGM11);	//clear on match, reset on rollover

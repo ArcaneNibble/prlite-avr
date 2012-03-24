@@ -92,6 +92,10 @@ int main(void)
 
 	initLib();
 	setAddr(bl_get_addr());
+	setMulticast(bl_get_multicast_group(0), 0);
+	setMulticast(bl_get_multicast_group(1), 1);
+	setMulticast(bl_get_multicast_group(2), 2);
+	setMulticast(bl_get_multicast_group(3), 3);
 	
 	ICR1 = 40000;	//20 ms with 16 Mhz clock with /8 (2Mhz)
 	//valid range for pwm is 2000 (1 ms) to 4000 (2 ms)  idle is 3000
