@@ -5,7 +5,7 @@
 void getVersion(char *v)
 {
 	v[0] = '0';	//major
-	v[1] = '2';	//minor
+	v[1] = '3';	//minor
 	v[2] = '0';	//revision
 	v[3] = '0';	//unused
 }
@@ -51,6 +51,13 @@ void initLib(void)
 void setAddr(unsigned char a)
 {
 	my_addr = a;
+}
+
+void setMulticast(unsigned char group, unsigned char which)
+{
+	if(which > 3)
+		return;
+	multicast_groups[which] = group;
 }
 
 unsigned char doChecksum(const unsigned char *buf, unsigned char len)

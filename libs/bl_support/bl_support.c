@@ -9,7 +9,8 @@ typedef struct
 	unsigned char address;
 	unsigned long library_adler;
 	unsigned long application_adler;
-	unsigned char data[6];
+	unsigned char multicast_group[4];
+	unsigned char data[2];
 	unsigned char checksum;
 } __attribute__((__packed__)) bootdata;
 
@@ -85,3 +86,9 @@ void bl_erase_all_csum(void)
 	eeprom_write_block(&d, (void*)(0x3F0), sizeof(d));
 }
 
+unsigned char bl_get_multicast_group(unsigned char which)
+{
+	if(which > 3)
+		return 0xFF;
+	return eeprom_read_byte((void*)(0x3F0+9+which));
+}

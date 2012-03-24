@@ -24,4 +24,6 @@ extern unsigned long protocol_errors;
 
 extern unsigned char my_addr;
 
+extern unsigned char multicast_groups[];
+
 #endif
