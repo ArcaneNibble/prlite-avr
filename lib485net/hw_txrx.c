@@ -38,7 +38,7 @@ void uart_rx_isr(void)
 				unsigned char masked_c_C0 = c & (unsigned char)0xC0;
 				unsigned char masked_c_F0 = c & (unsigned char)0xF0;
 				//2nd byte (dest addr)
-				if(c == my_addr || my_addr == 0 ||
+				if(c == my_addr || c == 0 || my_addr == 0 ||
 					((masked_c_C0 == 0xC0) && (masked_c_F0 != 0xF0) && 
 						((masked_c_multicast == multicast_groups[0]) || (masked_c_multicast == multicast_groups[1]) || 
 						(masked_c_multicast == multicast_groups[2]) || (masked_c_multicast == multicast_groups[3]))))
