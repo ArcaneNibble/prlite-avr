@@ -77,11 +77,16 @@ int main(void)
 	FIXED1616 kp=0, ki=0, kd=0;
 	signed int setpoint=0;
 	
-	void *gains_dgram, *setpoints_dgram, *status_dgram, *reprogram_dgram;
+	void *gains_dgram, *setpoints_dgram, *status_dgram, *jumbo_dgram, *reprogram_dgram;
 	unsigned char packet_buf[64];
 	unsigned char packet_len;
+	unsigned char myaddr;
+	unsigned char *packet_subset;
+	unsigned char packet_subset_len;
 	pid_gains_packet *gains;
 	setpoints_packet *setpoints;
+	pid_gains_packet *gains2;
+	setpoints_packet *setpoints2;
 	wheel_status_packet *status;
 	
 	signed int oldnumticks = 0;
@@ -91,7 +96,7 @@ int main(void)
 	FIXED1616 iaccum = 0;
 
 	initLib();
-	setAddr(bl_get_addr());
+	setAddr(myaddr = bl_get_addr());
 	setMulticast(bl_get_multicast_group(0), 0);
 	setMulticast(bl_get_multicast_group(1), 1);
 	setMulticast(bl_get_multicast_group(2), 2);
@@ -114,6 +119,7 @@ int main(void)
 	status_dgram = connectDGram(0xF0, 0, 7);	//pc port 7 is incoming status for everything
 	gains_dgram = listenDGram(1);
 	setpoints_dgram = listenDGram(2);
+	jumbo_dgram = listenDGram(6);
 	reprogram_dgram = listenDGram(7);
 	
 	gains = setpoints = status = &(packet_buf[0]);
@@ -144,6 +150,32 @@ int main(void)
 				if(packet_len == sizeof(setpoints_packet))
 				{
 					setpoint = setpoints->speed;
+				}
+			}
+			
+			if(recvDGram(jumbo_dgram, &(packet_buf[0]), &packet_len) == 0)
+			{
+				if(packet_len > 0)
+				{
+					if(recvJumboDGram(&(packet_buf[0]), packet_len, 0, myaddr, &packet_subset, &packet_subset_len) == 0)
+					{
+						if(packet_subset_len == sizeof(pid_gains_packet))
+						{
+							gains2 = packet_subset;
+							kp = gains2->p;
+							ki = gains2->i;
+							kd = gains2->d;
+							orientation = gains2->orientation;
+						}
+					}
+					if(recvJumboDGram(&(packet_buf[0]), packet_len, 1, myaddr, &packet_subset, &packet_subset_len) == 0)
+					{
+						if(packet_subset_len == sizeof(setpoints_packet))
+						{
+							setpoints2 = packet_subset;
+							setpoint = setpoints2->speed;
+						}
+					}
 				}
 			}
 			
