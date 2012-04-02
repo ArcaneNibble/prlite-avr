@@ -1,3 +1,8 @@
+#ifndef LIB485NET_H
+#define LIB485NET_H
+
+#include "lib485net_hl.h"
+
 extern void getVersion(char *v);
 extern void initLib(void);
 extern void setAddr(unsigned char a);
@@ -17,3 +22,4 @@ extern void *connectStream(unsigned char addr, unsigned char localport, unsigned
 extern unsigned char sendStream(void *conn, const unsigned char *packet, unsigned char len);
 extern unsigned char recvStream(void *conn, unsigned char *packet, unsigned char *len);
 extern void closeStream(void *conn);
+#endif
