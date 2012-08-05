@@ -28,6 +28,7 @@ typedef struct
 	FIXED1616 debug_d;
 	unsigned int out;
 	unsigned int time;
+	unsigned char syncing;
 } __attribute__((__packed__)) wheel_status_packet;
 
 signed int position;
@@ -77,7 +78,7 @@ int main(void)
 	FIXED1616 kp=0, ki=0, kd=0;
 	signed int setpoint=0;
 	
-	void *gains_dgram, *setpoints_dgram, *status_dgram, *jumbo_dgram, *reprogram_dgram;
+	void *gains_dgram, *setpoints_dgram, *status_dgram, *jumbo_dgram, *reprogram_dgram, *hack_sync_dgram;
 	unsigned char packet_buf[64];
 	unsigned char packet_len;
 	unsigned char myaddr;
@@ -88,6 +89,9 @@ int main(void)
 	pid_gains_packet *gains2;
 	setpoints_packet *setpoints2;
 	wheel_status_packet *status;
+	
+	unsigned char waiting_sync = 0;
+	signed int new_setpoint = 0;
 	
 	signed int oldnumticks = 0;
 	unsigned long interval = 0;
@@ -108,6 +112,9 @@ int main(void)
 	TCCR1A = _BV(COM1A1) | _BV(WGM11);	//clear on match, reset on rollover
 	TCCR1B = _BV(WGM13) | _BV(WGM12) | _BV(CS11);		//mode 14 (reset on icr1)   clock div 8
 	//TIMSK1 = _BV(TOIE1);
+	
+	PORTB &= ~(_BV(PB4));	//out 0 on MISO
+	DDRB |= _BV(PB4);		//out 0 on MISO
 
 	DDRB |= _BV(PB1);	//enable pwm port
 
@@ -119,6 +126,7 @@ int main(void)
 	status_dgram = connectDGram(0xF0, 0, 7);	//pc port 7 is incoming status for everything
 	gains_dgram = listenDGram(1);
 	setpoints_dgram = listenDGram(2);
+	hack_sync_dgram = listenDGram(3);
 	jumbo_dgram = listenDGram(6);
 	reprogram_dgram = listenDGram(7);
 	
@@ -149,7 +157,10 @@ int main(void)
 			{
 				if(packet_len == sizeof(setpoints_packet))
 				{
-					setpoint = setpoints->speed;
+					new_setpoint = setpoints->speed;
+					waiting_sync = 1;
+					//allow pin to float high
+					DDRB &= ~(_BV(PB4));
 				}
 			}
 			
@@ -175,6 +186,20 @@ int main(void)
 							setpoints2 = packet_subset;
 							setpoint = setpoints2->speed;
 						}
+					}
+				}
+			}
+			
+			if(recvDGram(hack_sync_dgram, &(packet_buf[0]), &packet_len) == 0)
+			{
+				if(packet_len == 4)
+				{
+					if(packet_buf[0] == 0xA5 &&
+						packet_buf[1] == 0x5A &&
+						packet_buf[2] == 0xCC &&
+						packet_buf[3] == 0x33)
+					{
+						DDRB |= _BV(PB4);		//out 0 on MISO
 					}
 				}
 			}
@@ -245,6 +270,16 @@ int main(void)
 					oldposition = position;
 				}
 				
+				if(waiting_sync)
+				{
+					if(PINB & _BV(PB4))
+					{
+						//the pin actually became high
+						setpoint = new_setpoint;
+						waiting_sync = 0;
+					}
+				}
+				
 				//numticks = ticks/200 ms (a velocity measurement)
 				
 				FIXED1616 e = int_to_fixed(setpoint - numticks);
@@ -283,6 +318,7 @@ int main(void)
 				status->debug_d = dout;
 				status->out = newval;
 				status->time = TCNT1;
+				status->syncing = waiting_sync;
 				
 				sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
 			}
