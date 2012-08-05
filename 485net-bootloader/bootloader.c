@@ -131,7 +131,7 @@ inline void timer0_on(void)
 
 inline void timer0_off(void)
 {
-	TCCR0B &= ~(_BV(CS00) | _BV(CS00));	//clock div 1024 (15.625 kHz)
+	TCCR0B &= ~(_BV(CS02) | _BV(CS00));	//clock div 1024 (15.625 kHz)
 }
 
 inline void uart_rx_int_off(void)
