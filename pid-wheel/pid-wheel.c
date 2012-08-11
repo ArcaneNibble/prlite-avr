@@ -184,7 +184,10 @@ int main(void)
 						if(packet_subset_len == sizeof(setpoints_packet))
 						{
 							setpoints2 = packet_subset;
-							setpoint = setpoints2->speed;
+							new_setpoint = setpoints2->speed;
+							waiting_sync = 1;
+							//allow pin to float high
+							DDRB &= ~(_BV(PB4));
 						}
 					}
 				}
@@ -272,7 +275,7 @@ int main(void)
 				
 				if(waiting_sync)
 				{
-					if(PINB & _BV(PB4))
+					if((PINB & _BV(PB4)) || 0 /*debug*/)
 					{
 						//the pin actually became high
 						setpoint = new_setpoint;
