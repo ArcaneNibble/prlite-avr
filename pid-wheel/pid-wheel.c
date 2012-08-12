@@ -28,7 +28,12 @@ typedef struct
 	FIXED1616 debug_d;
 	unsigned int out;
 	unsigned int time;
-	unsigned char syncing;
+	//bit0:	is waiting on sync line
+	//bit1: logic level of sync line
+	//bit2: PID gains have ever been set
+	//bit3: command rx toggle
+	//bit4: is no longer holding down sync (got command)
+	unsigned char debug_bits;
 } __attribute__((__packed__)) wheel_status_packet;
 
 signed int position;
@@ -98,6 +103,10 @@ int main(void)
 	signed int oldposition = 0;
 	unsigned char wait_cnt = 0;
 	FIXED1616 iaccum = 0;
+	
+	unsigned char pid_has_been_set = 0;
+	unsigned char rx_toggle = 0;
+	unsigned char not_asserting_sync = 0;
 
 	initLib();
 	setAddr(myaddr = bl_get_addr());
@@ -150,6 +159,8 @@ int main(void)
 					ki = gains->i;
 					kd = gains->d;
 					orientation = gains->orientation;
+					
+					pid_has_been_set = 1;
 				}
 			}
 			
@@ -161,6 +172,9 @@ int main(void)
 					waiting_sync = 1;
 					//allow pin to float high
 					DDRB &= ~(_BV(PB4));
+					
+					not_asserting_sync = 1;
+					rx_toggle ^= 1;
 				}
 			}
 			
@@ -177,6 +191,8 @@ int main(void)
 							ki = gains2->i;
 							kd = gains2->d;
 							orientation = gains2->orientation;
+							
+							pid_has_been_set = 1;
 						}
 					}
 					if(recvJumboDGram(&(packet_buf[0]), packet_len, 1, myaddr, &packet_subset, &packet_subset_len) == 0)
@@ -188,6 +204,9 @@ int main(void)
 							waiting_sync = 1;
 							//allow pin to float high
 							DDRB &= ~(_BV(PB4));
+							
+							not_asserting_sync = 1;
+							rx_toggle ^= 1;
 						}
 					}
 				}
@@ -203,6 +222,8 @@ int main(void)
 						packet_buf[3] == 0x33)
 					{
 						DDRB |= _BV(PB4);		//out 0 on MISO
+						
+						not_asserting_sync = 0;
 					}
 				}
 			}
@@ -273,9 +294,11 @@ int main(void)
 					oldposition = position;
 				}
 				
+				unsigned char sync_pin_state = PINB & _BV(PB4);
+				
 				if(waiting_sync)
 				{
-					if((PINB & _BV(PB4)) || 0 /*debug*/)
+					if(sync_pin_state || 0 /*debug*/)
 					{
 						//the pin actually became high
 						setpoint = new_setpoint;
@@ -321,7 +344,7 @@ int main(void)
 				status->debug_d = dout;
 				status->out = newval;
 				status->time = TCNT1;
-				status->syncing = waiting_sync;
+				status->debug_bits = (waiting_sync & 1) | ((!!sync_pin_state) << 1) | ((pid_has_been_set & 1 ) << 2) | ((rx_toggle & 1) << 3) | ((not_asserting_sync & 1) << 4);
 				
 				sendDGram(status_dgram, &(packet_buf[0]), sizeof(wheel_status_packet));
 			}
