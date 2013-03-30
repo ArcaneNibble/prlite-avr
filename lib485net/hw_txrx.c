@@ -151,7 +151,9 @@ void uart_tx_isr(void)
 {
 	unsigned char c, i;
 	unsigned char time, newtime, txerr;
-	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes++];
+//	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes++]; 
+// do the byte increment later in case there is an error
+	c = packet_queue[(current_tx_queue_slot & 0x7F) * MAX_PACKET_SIZE + tx_packet_bytes];
 	time = newtime = TCNT2;
 	txerr = 0;
 	UDR0 = c;
@@ -187,6 +189,9 @@ void uart_tx_isr(void)
 	}
 	
 	//we did transmit our byte so far
+// increment the tx byte count here; there is no error
+	tx_packet_bytes++;
+
 	if(tx_packet_bytes == tx_packet_bytes_max)
 	{
 		//we're done!
